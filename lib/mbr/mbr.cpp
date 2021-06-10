@@ -16,7 +16,14 @@ MasterBootRecord::MasterBootRecord() : /* Initialization FlashWearLevellingUtils
 {
 }
 
-MasterBootRecord::~MasterBootRecord() {}
+MasterBootRecord::~MasterBootRecord() {
+    _flash_internal_handler.end();
+}
+
+void MasterBootRecord::end(void)
+{
+    _flash_internal_handler.end();
+}
 
 MasterBootRecord::mbr_status_t MasterBootRecord::begin(void)
 {
@@ -67,4 +74,13 @@ MasterBootRecord::mbr_status_t MasterBootRecord::commit(mbr_info_t *mbr)
         return MBR_ERROR;
     }
     return MBR_OK;
+}
+
+void MasterBootRecord::printMbrInfo(void)
+{
+    mbr_info_t mbr_info;
+    if(load(&mbr_info) == MBR_OK)
+    {
+        MBR_TAG_PRINTF("MBR information");
+    }
 }

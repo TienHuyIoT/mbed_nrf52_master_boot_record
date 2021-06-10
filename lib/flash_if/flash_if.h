@@ -40,7 +40,14 @@ public:
   flashInterface(flashType *fType, uint32_t baseAddr = 0) : _flash_if(fType) {
     _properties.base_addr = baseAddr;
   }
-  ~flashInterface() {}
+  ~flashInterface() {
+    _flash_if->deinit();
+  }
+
+  void end(void)
+  {
+    _flash_if->deinit();
+  }
 
   flash_status_t begin(void)
   {

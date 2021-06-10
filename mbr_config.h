@@ -35,13 +35,6 @@
 #define FW_VERSION_BUILD 0
 #endif
 
-//==========================================================
-// <o> FW_TYPE
-
-#ifndef FW_TYPE
-#define FW_TYPE 0xAA550101
-#endif
-
 // </h>
 
 // <<< end of configuration section >>>

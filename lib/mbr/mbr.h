@@ -19,33 +19,44 @@
 #define MBR_CRC_APP_FACTORY 0x00000000 /* the application doesn't need to verify CRC */
 #define MBR_CRC_APP_NONE 0xFFFFFFFF    /* the application isn't exist */
 
+/* 55(signal)-01(app)-00(raw image)-00(internal) */
+#define FW_APP_MAIN_TYPE 0x55010000
+/* 55(signal)-01(app)-01(encrypt image)-01(external) */
+#define FW_APP_ROLLBACK_TYPE 0x55010101
+/* 55(signal)-00(boot)-00(raw image)-00(internal) */
+#define FW_BOOT_TYPE 0x55000000
+/* 55(signal)-00(boot)-01(encrypt image)-01(external) */
+#define FW_BOOT_ROLLBACK_TYPE 0x55000101
+/* 55(signal)-00/01(boot/app)-03(Header + Encrypt image)-01(external) */
+#define FW_IMAGE_DOWNLOAD_TYPE 0x55000301
+
 #define MBR_INFO_DEFAULT                                                                                             \
     {                                                                                                                \
         .app_main = {.startup_addr = MAIN_APPLICATION_ADDR,                                                          \
                      .max_size = MAIN_APPLICATION_REGION_SIZE,                                                       \
                      .checksum = MBR_CRC_APP_FACTORY,                                                                \
-                     .type = FW_TYPE},                                                                               \
+                     .type = {.u32 = FW_APP_MAIN_TYPE}},                                                                               \
         .app_rollback = {.startup_addr = MAIN_APPLICATION_ROLLBACK_ADDR,                                             \
                          .max_size = MAIN_APPLICATION_ROLLBACK_REGION_SIZE,                                          \
                          .checksum = MBR_CRC_APP_NONE,                                                               \
-                         .type = FW_TYPE},                                                                           \
+                         .type = {.u32 = FW_APP_ROLLBACK_TYPE}},                                                                           \
         .boot_factory = {.startup_addr = BOOTLOADER_FACTORY_ADDR,                                                    \
                          .max_size = BOOTLOADER_FACTORY_REGION_SIZE,                                                 \
                          .checksum = MBR_CRC_APP_FACTORY,                                                            \
-                         .type = FW_TYPE},                                                                           \
+                         .type = {.u32 = FW_BOOT_TYPE}},                                                                           \
         .boot_rollback = {.startup_addr = BOOTLOADER_ROLLBACK_ADDR,                                                  \
                           .max_size = BOOTLOADER_ROLLBACK_REGION_SIZE,                                               \
                           .checksum = MBR_CRC_APP_NONE,                                                              \
-                          .type = FW_TYPE},                                                                          \
+                          .type = {.u32 = FW_BOOT_ROLLBACK_TYPE}},                                                                          \
         .image_download = {.startup_addr = IMAGE_DOWNLOAD_ADDR,                                                      \
                            .max_size = IMAGE_DOWNLOAD_REGION_SIZE,                                                   \
                            .checksum = MBR_CRC_APP_NONE,                                                             \
-                           .type = FW_TYPE},                                                                         \
+                           .type = {.u32 = FW_IMAGE_DOWNLOAD_TYPE}},                                                                         \
         .dfu_num = 0,                                                                                                \
         .hw_version = HW_VERSION_STRING,                                                                             \
         .aes_key = {0x9a, 0x95, 0x0f, 0x6c, 0x4f, 0xa1, 0xf9, 0x19, 0xcb, 0x1e, 0x15, 0x39, 0x56, 0x47, 0x23, 0xe2}, \
         .aes_iv = {0x45, 0xc4, 0x25, 0x0f, 0x8d, 0x79, 0x85, 0xa1, 0xe7, 0x46, 0x92, 0xc7, 0xdd, 0x24, 0x79, 0x83},  \
-        .common = {.app_status = 6 /*APP_NONE*/,                                                                     \
+        .common = {.app_status = 0 /*APP_RUN*/,                                                                     \
                    .upgrade_mode = 0 /* UPGRADE_MODE_ANY */ }                                                        \
     }
 
@@ -53,10 +64,27 @@ typedef struct __attribute__((packed, aligned(4)))
 {
     uint32_t startup_addr; /* App address startup */
     uint32_t max_size;     /* App size limit */
-    uint32_t mem_type;     /* 0: internal; 1: external */
     uint32_t checksum;     /* App CRC32 checksum verify */
     uint32_t size;         /* App size */
-    uint32_t type;         /* App type */
+    union
+    {
+        uint32_t u32;
+        struct
+        {
+            uint8_t mem; /* 0. internal
+                            1. external;
+                            */
+            uint8_t enc; /* 0. raw; 
+                            1. Encrypt;
+                            2. Header + raw (image download option);
+                            3. Header + encrypt (image download option);
+                            */
+            uint8_t app; /* 0. Boot
+                            1. App;
+                            */
+            uint8_t signal; /* alway 0x55 */
+        };
+    } type; /* App type */
     union
     {
         uint32_t u32;
@@ -74,7 +102,7 @@ typedef struct __attribute__((packed, aligned(4)))
 {
     app_info_t app_main;       /* main application */
     app_info_t app_rollback;   /* rollback application */
-    app_info_t boot_factory;   /* factory application */
+    app_info_t boot_factory;   /* ble bootloader application */
     app_info_t boot_rollback;  /* ble bootloader application */
     app_info_t image_download; /* image download application */
     uint32_t dfu_num;          /* Number counter upgrade */
@@ -113,20 +141,21 @@ class MasterBootRecord
     typedef enum
     {
         APP_RUN,       /* 0. App run */
-        APP_UPGRADE,   /* 1. App upgrade */
-        APP_ROLLBACK,  /* 2. App rollback */
-        BOOT_RUN,      /* 3. boot run */
-        BOOT_UPGRADE,  /* 4. boot upgrade */
-        BOOT_ROLLBACK, /* 5. boot rollback */
-        APP_NONE       /* 6. App None */
+        APP_ROLLBACK,  /* 1. App rollback */
+        BOOT_RUN,      /* 2. boot run */
+        BOOT_ROLLBACK, /* 3. boot rollback */
+        UPGRADE_RUN,   /* 4. New update */
+        APP_NONE       /* 5. App None */
     } app_status_t;
 
 public:
     MasterBootRecord();
     ~MasterBootRecord();
     mbr_status_t begin(void);
+    void end(void);
     mbr_status_t load(mbr_info_t *mbr);
     mbr_status_t commit(mbr_info_t *mbr);
+    void printMbrInfo(void);
 
 private:
     /* Register callback handler flash memory */
