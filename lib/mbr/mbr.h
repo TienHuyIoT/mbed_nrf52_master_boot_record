@@ -8,6 +8,7 @@
 #include "FlashIAPBlockDevice.h"
 #include "FlashWearLevellingUtils.h"
 #include "mbr_config.h"
+#include "mem_layout.h"
 #include "console_dbg.h"
 
 /* Exported macro ------------------------------------------------------------*/
@@ -15,29 +16,44 @@
 #define MBR_TAG_PRINTF(...) CONSOLE_TAG_LOGI("[MBR]", __VA_ARGS__)
 
 /* Private defines -----------------------------------------------------------*/
-#define MBR_KEY_AUTO_CFG_VALUE 0xAA
+#define MBR_CRC_APP_FACTORY 0x00000000 /* the application doesn't need to verify CRC */
+#define MBR_CRC_APP_NONE 0xFFFFFFFF    /* the application isn't exist */
 
-#define MBR_INFO_DEFAULT                                                                                                                                                                           \
-    {                                                                                                                                                                                              \
-        .app_main = {.startup_addr = 0x8000, .max_size = (0x20000 - 0x8000 - 0x400), .size = (0x20000 - 0x8000 - 0x400), .type = FW_TYPE, .version = {.major = 0, .minor = 1, .build = 1}},        \
-        .app_rollback = {.startup_addr = 0x8000, .max_size = (0x20000 - 0x8000 - 0x400), .size = (0x20000 - 0x8000 - 0x400)},                                                                      \
-        .app_factory = {.startup_addr = 0x8000, .max_size = (0x20000 - 0x8000 - 0x400), .size = (0x20000 - 0x8000 - 0x400)},                                                                       \
-        .app_uart_boot = {.startup_addr = 0x0, .max_size = 0x8000, .size = 0x8000, .type = FW_TYPE, .version = {.major = FW_VERSION_MAJOR, .minor = FW_VERSION_MINOR, .build = FW_VERSION_BUILD}}, \
-        .app_upgrade_num = 0,                                                                                                                                                                      \
-        .hw_version = HW_VERSION_STRING,                                                                                                                                                           \
-        .aes_key = {0x9a, 0x95, 0x0f, 0x6c, 0x4f, 0xa0, 0xf9, 0x19, 0xcb, 0x1e, 0x05, 0x39, 0x56, 0x47, 0x23, 0xe2},                                                                               \
-        .aes_iv = {0x45, 0xc4, 0x25, 0x0f, 0x8d, 0x78, 0x85, 0xa1, 0xe7, 0x46, 0x94, 0xc7, 0xdd, 0x24, 0x79, 0x83},                                                                                \
-        .common = {.app_status = 5 /*APP_NONE*/,                                                                                                                                                   \
-                   .upgrade_mode = 0,                                                                                                                                                              \
-                   .reserve = 0,                                                                                                                                                                   \
-                   .key_auto_cfg = MBR_KEY_AUTO_CFG_VALUE }                                                                                                                                        \
+#define MBR_INFO_DEFAULT                                                                                             \
+    {                                                                                                                \
+        .app_main = {.startup_addr = MAIN_APPLICATION_ADDR,                                                          \
+                     .max_size = MAIN_APPLICATION_REGION_SIZE,                                                       \
+                     .checksum = MBR_CRC_APP_FACTORY,                                                                \
+                     .type = FW_TYPE},                                                                               \
+        .app_rollback = {.startup_addr = MAIN_APPLICATION_ROLLBACK_ADDR,                                             \
+                         .max_size = MAIN_APPLICATION_ROLLBACK_REGION_SIZE,                                          \
+                         .checksum = MBR_CRC_APP_NONE,                                                               \
+                         .type = FW_TYPE},                                                                           \
+        .boot_factory = {.startup_addr = BOOTLOADER_FACTORY_ADDR,                                                    \
+                         .max_size = BOOTLOADER_FACTORY_REGION_SIZE,                                                 \
+                         .checksum = MBR_CRC_APP_FACTORY,                                                            \
+                         .type = FW_TYPE},                                                                           \
+        .boot_rollback = {.startup_addr = BOOTLOADER_ROLLBACK_ADDR,                                                  \
+                          .max_size = BOOTLOADER_ROLLBACK_REGION_SIZE,                                               \
+                          .checksum = MBR_CRC_APP_NONE,                                                              \
+                          .type = FW_TYPE},                                                                          \
+        .image_download = {.startup_addr = IMAGE_DOWNLOAD_ADDR,                                                      \
+                           .max_size = IMAGE_DOWNLOAD_REGION_SIZE,                                                   \
+                           .checksum = MBR_CRC_APP_NONE,                                                             \
+                           .type = FW_TYPE},                                                                         \
+        .dfu_num = 0,                                                                                                \
+        .hw_version = HW_VERSION_STRING,                                                                             \
+        .aes_key = {0x9a, 0x95, 0x0f, 0x6c, 0x4f, 0xa1, 0xf9, 0x19, 0xcb, 0x1e, 0x15, 0x39, 0x56, 0x47, 0x23, 0xe2}, \
+        .aes_iv = {0x45, 0xc4, 0x25, 0x0f, 0x8d, 0x79, 0x85, 0xa1, 0xe7, 0x46, 0x92, 0xc7, 0xdd, 0x24, 0x79, 0x83},  \
+        .common = {.app_status = 6 /*APP_NONE*/,                                                                     \
+                   .upgrade_mode = 0 /* UPGRADE_MODE_ANY */ }                                                        \
     }
 
 typedef struct __attribute__((packed, aligned(4)))
 {
     uint32_t startup_addr; /* App address startup */
     uint32_t max_size;     /* App size limit */
-    uint32_t build_time;   /* Epoch time (option)*/
+    uint32_t mem_type;     /* 0: internal; 1: external */
     uint32_t checksum;     /* App CRC32 checksum verify */
     uint32_t size;         /* App size */
     uint32_t type;         /* App type */
@@ -56,14 +72,15 @@ typedef struct __attribute__((packed, aligned(4)))
 /* Size of structure must be multiples write_size-byte for write command */
 typedef struct __attribute__((packed, aligned(4)))
 {
-    app_info_t app_main;      /* main application */
-    app_info_t app_rollback;  /* rollback application */
-    app_info_t app_factory;   /* factory application */
-    app_info_t app_uart_boot; /* uart bootloader application */
-    uint32_t app_upgrade_num; /* Number counter upgrade */
-    uint8_t hw_version[16];   /* App Hardware version */
-    uint8_t aes_key[16];      /* AES key encrypt */
-    uint8_t aes_iv[16];       /* AES iv encrypt */
+    app_info_t app_main;       /* main application */
+    app_info_t app_rollback;   /* rollback application */
+    app_info_t boot_factory;   /* factory application */
+    app_info_t boot_rollback;  /* ble bootloader application */
+    app_info_t image_download; /* image download application */
+    uint32_t dfu_num;          /* Number counter upgrade */
+    uint8_t hw_version[16];    /* App Hardware version */
+    uint8_t aes_key[16];       /* AES key encrypt */
+    uint8_t aes_iv[16];        /* AES iv encrypt */
     union
     {
         uint32_t u32_common;
@@ -71,8 +88,6 @@ typedef struct __attribute__((packed, aligned(4)))
         {
             uint8_t app_status;   /* ref app_status_t */
             uint8_t upgrade_mode; /* ref upgrade_mode_t */
-            uint8_t reserve;
-            uint8_t key_auto_cfg;
         };
     } common;
 } mbr_info_t;
@@ -97,16 +112,17 @@ class MasterBootRecord
   */
     typedef enum
     {
-        APP_READY,    /* App ready */
-        APP_CONFIRM,  /* App wating confirm after upgrade */
-        APP_DFU_MODE, /* App enter bootloader mode */
-        APP_ROLLBACK, /* App enter rollback mode */
-        APP_FACTORY,  /* App enter factory mode */
-        APP_NONE      /* App None */
+        APP_RUN,       /* 0. App run */
+        APP_UPGRADE,   /* 1. App upgrade */
+        APP_ROLLBACK,  /* 2. App rollback */
+        BOOT_RUN,      /* 3. boot run */
+        BOOT_UPGRADE,  /* 4. boot upgrade */
+        BOOT_ROLLBACK, /* 5. boot rollback */
+        APP_NONE       /* 6. App None */
     } app_status_t;
 
 public:
-    MasterBootRecord(/* args */);
+    MasterBootRecord();
     ~MasterBootRecord();
     mbr_status_t begin(void);
     mbr_status_t load(mbr_info_t *mbr);
@@ -161,7 +177,6 @@ private:
     FlashWearLevellingUtils _flash_wear_levelling;
     FlashIAPBlockDevice _flash_iap_block_device;
     flashIFCallback _fp_callback;
-    mbr_info_t _mbr_info;
 };
 
 #endif /* __MBR_H */

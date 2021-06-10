@@ -4,22 +4,22 @@ Internal memory layout
 |-------------------|   (0x100000) DEVICE_END_ADDR
 |                   |
 |    Application    |
-| (is main program) |
+| (is main program) |   MAIN_APPLICATION_REGION_SIZE
 |       (628K)      |
 |                   |
 +-------------------+   MAIN_APPLICATION_ADDR
 |                   |
 |    Application    |
-| (is a bootloader) |
+| (is a bootloader) |   BOOTLOADER_FACTORY_REGION_SIZE
 |       (300K)      |
 |                   |
 +-------------------+   BOOTLOADER_FACTORY_ADDR
 |      MBR params   |
-|        (8K)       |
+|        (8K)       |   MASTER_BOOT_PARAMS_REGION_SIZE
 +-------------------+   MASTER_BOOT_PARAMS_ADDR
 |                   |
 |        MBR        |
-|       (64K)       |
+|       (64K)       |   MASTER_BOOT_RECORD_REGION_SIZE
 |                   |
 +-------------------+   (0x000000) MASTER_BOOT_RECORD_ADDR
 
@@ -29,23 +29,23 @@ External memory layout
 |-------------------|   (0x800000) EX_MEM_END_ADDR
 |                   |
 |        Data       |
-|       (6068K)     |
+|       (6068K)     |   CHASING_DATA_REGION_SIZE
 |                   |
 +-------------------+   CHASING_DATA_ADDR
 |                   |
 |   Image download  |
-|        (1M)       |
+|        (1M)       |   IMAGE_DOWNLOAD_REGION_SIZE
 |                   |
 +-------------------+   IMAGE_DOWNLOAD_ADDR
 |                   |
 |    App rollback   |
-| (is main program) |
+| (is main program) |   MAIN_APPLICATION_ROLLBACK_REGION_SIZE
 |       (628K)      |
 |                   |
 +-------------------+   MAIN_APPLICATION_ROLLBACK_ADDR
 |                   |
 |    App rollback   |
-| (is a bootloader) |
+| (is a bootloader) |   BOOTLOADER_ROLLBACK_REGION_SIZE
 |       (300K)      |
 |                   |
 +-------------------+   (0x000000) BOOTLOADER_ROLLBACK_ADDR
