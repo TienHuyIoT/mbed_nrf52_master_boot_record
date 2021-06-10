@@ -31,11 +31,7 @@ FlashWearLevellingUtils::
                                                   _data_length(data_length)
 {
     _pCallbacks = &defaultCallback;
-    memset(&_memory_cxt, 0, sizeof(memory_cxt_t));
-    _memory_cxt.header.addr = start_addr;
-    _memory_cxt.header.prevAddr = start_addr;
-    _memory_cxt.header.nextAddr = MEMORY_HEADER_END;
-    _memory_cxt.header.crc32 = 0xFFFFFFFF;
+    headerDefault();
 } // FlashWearLevellingUtils
 
 FlashWearLevellingUtils::~FlashWearLevellingUtils() {}
@@ -56,22 +52,19 @@ bool FlashWearLevellingUtils::begin(bool formatOnFail)
         return false;
     }
 
-    memset(&_memory_cxt, 0, sizeof(memory_cxt_t));
-    _memory_cxt.header.addr = _start_addr;
-    _memory_cxt.header.prevAddr = _start_addr;
-    _memory_cxt.header.nextAddr = MEMORY_HEADER_END;
-    _memory_cxt.header.crc32 = 0xFFFFFFFF;
-
     FWL_TAG_INFO("[begin] findLastHeader start");
     if (!findLastHeader())
     {
         if (formatOnFail)
         {
-            /* Erase first page */
-            FWL_TAG_INFO("[begin] erase first page");
-            if (!_pCallbacks->onErase(_start_addr, _page_size))
+            if (format())
             {
-                FWL_TAG_INFO("[begin] erase failed!");
+                FWL_TAG_INFO("[begin] the header default!");
+                headerDefault();
+            }
+            else
+            {
+                FWL_TAG_INFO("[begin] format failed!");
                 return false;
             }
         }
@@ -89,24 +82,43 @@ bool FlashWearLevellingUtils::begin(bool formatOnFail)
 */
 bool FlashWearLevellingUtils::format()
 {
-    /* Erase first page */
-    FWL_TAG_INFO("[format] erase first page");
-    if (!_pCallbacks->onErase(_start_addr, _page_size))
-    {
-        FWL_TAG_INFO("[format] erase failed!");
-        return false;
-    }
+    bool format = true;
 
-    FWL_TAG_INFO("[format] Init header default");
-    /* Don't have any header, this mean have not data */
-    _memory_cxt.header.addr = _start_addr;
-    _memory_cxt.header.nextAddr = _start_addr;
-    _memory_cxt.header.prevAddr = _start_addr;
-    _memory_cxt.header.crc32 = 0xFFFFFFFF;
-    _memory_cxt.header.dataLength = 0;
-    _memory_cxt.header.type = MEMORY_HEADER_TYPE;
-    _memory_cxt.data.addr = _start_addr + _header2data_offset_length;
-    _memory_cxt.data.length = 0;
+    /* Allocate dynamic memory */
+    uint8_t *ptr_data = new (std::nothrow) uint8_t[_page_size];
+    if (ptr_data != nullptr)
+    {
+        uint16_t length = _page_size;
+        FWL_TAG_INFO("[format] first check");
+        if (_pCallbacks->onRead(_start_addr, ptr_data, &length))
+        {
+            format = false;
+            for (int i = 0; i < length; ++i)
+            {
+                if (ptr_data[i] != 0xFF)
+                {
+                    format = true;
+                    break;
+                }
+            }
+        }
+        delete[] ptr_data;
+    }
+    
+    if (format)
+    {
+        /* Erase first page */
+        FWL_TAG_INFO("[format] erase first page");
+        if (!_pCallbacks->onErase(_start_addr, _page_size))
+        {
+            FWL_TAG_INFO("[format] erase failed!");
+            return false;
+        }
+    }
+    else
+    {
+        FWL_TAG_INFO("[format] No");
+    }
     return true;
 } // format
 
@@ -190,7 +202,7 @@ void FlashWearLevellingUtils::setCallbacks(FlashWearLevellingCallbacks *pCallbac
  */
 bool FlashWearLevellingUtils::findLastHeader()
 {
-    memory_cxt_t mem_cxt;
+    memory_cxt_t mem_cxt = {0};
     uint32_t find_cnt;
 
     /* Allocate dynamic memory */
@@ -260,17 +272,22 @@ bool FlashWearLevellingUtils::findLastHeader()
         FWL_TAG_INFO("[findLastHeader] Not Found header");
         FWL_TAG_INFO("[findLastHeader] Init header default");
         /* Don't have any header, this mean have not data */
-        _memory_cxt.header.addr = _start_addr;
-        _memory_cxt.header.nextAddr = _start_addr;
-        _memory_cxt.header.prevAddr = _start_addr;
-        _memory_cxt.header.crc32 = 0xFFFFFFFF;
-        _memory_cxt.header.dataLength = 0;
-        _memory_cxt.header.type = MEMORY_HEADER_TYPE;
-        _memory_cxt.data.addr = _start_addr + _header2data_offset_length;
-        _memory_cxt.data.length = 0;
+        headerDefault();
     }
     return false;
 } // findLastHeader
+
+void FlashWearLevellingUtils::headerDefault(void)
+{
+    _memory_cxt.header.addr = _start_addr;
+    _memory_cxt.header.nextAddr = _start_addr;
+    _memory_cxt.header.prevAddr = _start_addr;
+    _memory_cxt.header.crc32 = 0xFFFFFFFF;
+    _memory_cxt.header.dataLength = 0;
+    _memory_cxt.header.type = MEMORY_HEADER_TYPE;
+    _memory_cxt.data.addr = _start_addr + _header2data_offset_length;
+    _memory_cxt.data.length = 0;
+}
 
 /**
  * @brief Get data from header information.
@@ -299,6 +316,14 @@ bool FlashWearLevellingUtils::loadHeader(memory_cxt_t *mem)
         return false;
     }
 
+#if (1)
+    FWL_TAG_INFO("[loadHeader] header.crc32 0x%X", mem->header.crc32);
+    FWL_TAG_INFO("[loadHeader] header.nextAddr %u(0x%X)", mem->header.nextAddr, mem->header.nextAddr);
+    FWL_TAG_INFO("[loadHeader] header.addr %u(0x%X)", mem->header.addr, mem->header.addr);
+    FWL_TAG_INFO("[loadHeader] header.prevAddr %u(0x%X)", mem->header.prevAddr, mem->header.prevAddr);
+    FWL_TAG_INFO("[loadHeader] header.dataLength %u", mem->header.dataLength);
+#endif
+
     if (0xFFFFFFFF == mem->header.crc32)
     {
         FWL_TAG_INFO("[loadHeader] Header CRC32 failed!");
@@ -311,7 +336,7 @@ bool FlashWearLevellingUtils::loadHeader(memory_cxt_t *mem)
         return false;
     }
 
-    if (mem->header.dataLength > MEMORY_LENGTH_MAX)
+    if ((mem->header.dataLength > MEMORY_LENGTH_MAX) || (0 == mem->header.dataLength))
     {
         FWL_TAG_INFO("[loadHeader] Header length failed!");
         return false;
@@ -323,16 +348,54 @@ bool FlashWearLevellingUtils::loadHeader(memory_cxt_t *mem)
         return false;
     }
 
+    return true;
+} // loadHeader
+
+/**
+ * @brief Get data from header information.
+ * @param [in] memory_cxt_t The structure content variable informations.
+ */
+bool FlashWearLevellingUtils::header_isDefault(void)
+{
+    memory_cxt_t mem = {0};
+    uint16_t length;
+
+    /* Get header */
+    mem.header.addr = _start_addr;
+    length = _header2data_offset_length;
+    if (!_pCallbacks->onRead(mem.header.addr, (uint8_t *)&mem.header.crc32, &length))
+    {
+        FWL_TAG_INFO("[header_isDefault] Read Header failed!");
+        return false;
+    }
+
+    if (length != _header2data_offset_length)
+    {
+        FWL_TAG_INFO("[header_isDefault] Read length failed!");
+        return false;
+    }
+
+    if ((0xFFFFFFFF != mem.header.crc32)
+        || (_start_addr != mem.header.nextAddr)
+        || (_start_addr != mem.header.prevAddr)
+        || (0 != mem.header.dataLength)
+        || (MEMORY_HEADER_TYPE != mem.header.type))
+    {
+        FWL_TAG_INFO("[header_isDefault] false!");
+        return false;
+    }
+
 #if (1)
-    FWL_TAG_INFO("[loadHeader] crc32 0x%X", mem->header.crc32);
-    FWL_TAG_INFO("[loadHeader] header.nextAddr %u(0x%X)", mem->header.nextAddr, mem->header.nextAddr);
-    FWL_TAG_INFO("[saveHeader] header.addr %u(0x%X)", mem->header.addr, mem->header.addr);
-    FWL_TAG_INFO("[loadHeader] header.prevAddr %u(0x%X)", mem->header.prevAddr, mem->header.prevAddr);
-    FWL_TAG_INFO("[loadHeader] dataLength %u", mem->header.dataLength);
+    FWL_TAG_INFO("[header_isDefault] true!");
+    FWL_TAG_INFO("[header_isDefault] crc32 0x%X", mem.header.crc32);
+    FWL_TAG_INFO("[header_isDefault] header.nextAddr %u(0x%X)", mem.header.nextAddr, mem.header.nextAddr);
+    FWL_TAG_INFO("[header_isDefault] header.addr %u(0x%X)", mem.header.addr, mem.header.addr);
+    FWL_TAG_INFO("[header_isDefault] header.prevAddr %u(0x%X)", mem.header.prevAddr, mem.header.prevAddr);
+    FWL_TAG_INFO("[header_isDefault] dataLength %u", mem.header.dataLength);
 #endif
 
     return true;
-} // loadHeader
+} // header_isDefault
 
 /**
  * @brief set header into flash memory from header information.
@@ -349,7 +412,7 @@ bool FlashWearLevellingUtils::saveHeader(memory_cxt_t *mem)
         return false;
     }
 
-    if (mem->data.length > MEMORY_LENGTH_MAX)
+    if ((mem->data.length > MEMORY_LENGTH_MAX) || (0 == mem->data.length))
     {
         FWL_TAG_INFO("[saveHeader] Data length failed!");
         return false;
@@ -395,11 +458,11 @@ bool FlashWearLevellingUtils::saveHeader(memory_cxt_t *mem)
     mem->header.crc32 = calculator_crc32(mem);
 
 #if (1)
-    FWL_TAG_INFO("[saveHeader] crc32 0x%X", mem->header.crc32);
+    FWL_TAG_INFO("[saveHeader] header.crc32 0x%X", mem->header.crc32);
     FWL_TAG_INFO("[saveHeader] header.nextAddr %u(0x%X)", mem->header.nextAddr, mem->header.nextAddr);
     FWL_TAG_INFO("[saveHeader] header.addr %u(0x%X)", mem->header.addr, mem->header.addr);
     FWL_TAG_INFO("[saveHeader] header.prevAddr %u(0x%X)", mem->header.prevAddr, mem->header.prevAddr);
-    FWL_TAG_INFO("[saveHeader] dataLength %u", mem->header.dataLength);
+    FWL_TAG_INFO("[saveHeader] header.dataLength %u", mem->header.dataLength);
 #endif
 
     uint16_t length = _header2data_offset_length;
@@ -438,7 +501,7 @@ bool FlashWearLevellingUtils::verifyHeader(memory_cxt_t *mem)
         return false;
     }
 
-    if (mem->header.dataLength > MEMORY_LENGTH_MAX)
+    if ((mem->header.dataLength > MEMORY_LENGTH_MAX) || (0 == mem->header.dataLength))
     {
         FWL_TAG_INFO("[verifyHeader] Header length failed!");
         _pCallbacks->onStatus(FlashWearLevellingCallbacks::status_t::ERROR_SIZE_HEADER);
@@ -473,7 +536,7 @@ bool FlashWearLevellingUtils::loadData(memory_cxt_t *mem)
         return false;
     }
 
-    if (mem->data.length > MEMORY_LENGTH_MAX)
+    if ((mem->data.length > MEMORY_LENGTH_MAX) || (0 == mem->data.length))
     {
         FWL_TAG_INFO("[loadData] Data length failed!");
         _pCallbacks->onStatus(FlashWearLevellingCallbacks::status_t::ERROR_SIZE_DATA);
@@ -678,7 +741,14 @@ bool FlashWearLevellingUtils::eraseData(uint32_t addr, uint16_t length)
         FWL_TAG_INFO("[eraseData] remain_size: %u", remain_size);
     } // while (length >= remain_size)
 
-    FWL_TAG_INFO("[eraseData] page number is erased: %u", page_erase_cnt);
+    if (page_erase_cnt > 0)
+    {
+        FWL_TAG_INFO("[eraseData] page number is erased: %u", page_erase_cnt);
+    }
+    else
+    {
+        FWL_TAG_INFO("[eraseData] No");
+    }
 
     return status_isOK;
 } // eraseData

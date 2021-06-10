@@ -27,6 +27,7 @@
 #define PAGE_SIZE_DEFAULT 4096U /* 4096-Byte */
 
 #define FWL_TAG_INFO(...) //CONSOLE_TAG_LOGI("[FWL]", __VA_ARGS__)
+#define FWL_INFO(...) //CONSOLE_LOGI(__VA_ARGS__)
 
 typedef struct __attribute__((packed, aligned(4)))
 {
@@ -158,6 +159,8 @@ private:
     uint16_t _page_size;
     FlashWearLevellingCallbacks *_pCallbacks;
     bool findLastHeader();
+    bool header_isDefault(void);
+    void headerDefault(void);
     bool loadHeader(memory_cxt_t *mem);
     bool saveHeader(memory_cxt_t *mem);
     bool verifyHeader(memory_cxt_t *mem);

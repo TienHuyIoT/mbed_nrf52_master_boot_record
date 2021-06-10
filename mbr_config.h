@@ -7,7 +7,7 @@
 // <o> HW_VERSION_STRING
 
 #ifndef HW_VERSION_STRING
-#define HW_VERSION_STRING "watchMe"
+#define HW_VERSION_STRING "watchMe_v1.0"
 #endif
 
 // </h>

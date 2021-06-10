@@ -7,7 +7,11 @@ MasterBootRecord mbr;
 
 int main()
 {
+    mbr_info_t mbr_info;
+
+    MAIN_TAG_CONSOLE("===================================================");
     mbr.begin();
+    mbr.load(&mbr_info);
 
     while(1) {};
 

@@ -9,8 +9,8 @@
 #include "console_dbg.h"
 
 /* Exported macro ------------------------------------------------------------*/
-#define FLASHIF_PRINTF(...) CONSOLE_LOGI(__VA_ARGS__)
-#define FLASHIF_TAG_PRINTF(...) CONSOLE_TAG_LOGI("[FLASHIF]", __VA_ARGS__)
+#define FLASHIF_PRINTF(...) //CONSOLE_LOGI(__VA_ARGS__)
+#define FLASHIF_TAG_PRINTF(...) //CONSOLE_TAG_LOGI("[FLASHIF]", __VA_ARGS__)
 
 /* Error code */
 typedef enum flash_status {
@@ -75,12 +75,10 @@ public:
   flash_status_t erase(uint32_t addr_start, size_t lengthInBytes)
   {
     FLASHIF_TAG_PRINTF("Erase addr=%u, length=%u ", addr_start, lengthInBytes);
-    if (_properties.read_size > 1)
+
+    if (addr_start % _properties.erase_size || lengthInBytes % _properties.erase_size)
     {
-      if (addr_start % _properties.read_size || lengthInBytes % _properties.read_size)
-      {
-        FLASHIF_TAG_PRINTF("addr or length failure");
-      }
+      FLASHIF_TAG_PRINTF("addr or length failure");
     }
 
     addr_start -= _properties.base_addr;
@@ -97,12 +95,9 @@ public:
   {
     FLASHIF_TAG_PRINTF("Write addr=%u, length=%u", addr_start, lengthInBytes);
 
-    if (_properties.write_size > 1)
+    if (addr_start % _properties.write_size || lengthInBytes % _properties.write_size)
     {
-      if (addr_start % _properties.write_size || lengthInBytes % _properties.write_size)
-      {
-        FLASHIF_TAG_PRINTF("addr or length failure");
-      }
+      FLASHIF_TAG_PRINTF("addr or length failure");
     }
 
     addr_start -= _properties.base_addr;
@@ -118,12 +113,19 @@ public:
   flash_status_t read(uint32_t addr_start, uint8_t *src, size_t lengthInBytes)
   {
     FLASHIF_TAG_PRINTF("Read addr=%u, length=%u", addr_start, lengthInBytes);
+
+    if (addr_start % _properties.read_size || lengthInBytes % _properties.read_size)
+    {
+      FLASHIF_TAG_PRINTF("addr or length failure");
+    }
+
     addr_start -= _properties.base_addr;
     if(_flash_if->read(src, addr_start, lengthInBytes))
     {
       FLASHIF_TAG_PRINTF("ERROR");
       return FLASHIF_READ_ERROR;
     }
+
     FLASHIF_TAG_PRINTF("OK");
     return FLASHIF_OK;
   }

@@ -5,7 +5,7 @@ Internal memory layout
 |                   |
 |    Application    |
 | (is main program) |
-|       (644K)      |
+|       (628K)      |
 |                   |
 +-------------------+   MAIN_APPLICATION_ADDR
 |                   |
@@ -19,17 +19,17 @@ Internal memory layout
 +-------------------+   MASTER_BOOT_PARAMS_ADDR
 |                   |
 |        MBR        |
-|       (48K)       |
+|       (64K)       |
 |                   |
 +-------------------+   (0x000000) MASTER_BOOT_RECORD_ADDR
 
 
 External memory layout
 
-|-------------------|   (0x800000) DEVICE_END_ADDR
+|-------------------|   (0x800000) EX_MEM_END_ADDR
 |                   |
 |        Data       |
-|       (6052K)     |
+|       (6068K)     |
 |                   |
 +-------------------+   CHASING_DATA_ADDR
 |                   |
@@ -40,7 +40,7 @@ External memory layout
 |                   |
 |    App rollback   |
 | (is main program) |
-|       (644K)      |
+|       (628K)      |
 |                   |
 +-------------------+   MAIN_APPLICATION_ROLLBACK_ADDR
 |                   |
@@ -88,10 +88,10 @@ External memory layout
 // <h> Master boot record region
 
 //==========================================================
-// <o> MASTER_BOOT_RECORD_REGION_SIZE (48k)
+// <o> MASTER_BOOT_RECORD_REGION_SIZE (64k)
 
 #ifndef MASTER_BOOT_RECORD_REGION_SIZE
-#define MASTER_BOOT_RECORD_REGION_SIZE (DEVICE_PAGE_ERASE_SIZE * 12)
+#define MASTER_BOOT_RECORD_REGION_SIZE (DEVICE_PAGE_ERASE_SIZE * 16)
 #endif
 
 // <o> MASTER_BOOT_RECORD_ADDR
