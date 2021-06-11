@@ -4,9 +4,11 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "mbed.h"
+#include <string>
 #include "FlashIAPBlockDevice.h"
 #include "FlashSPIBlockDevice.h"
 #include "mem_layout.h"
+#include "mbr.h"
 #include "console_dbg.h"
 
 /* Exported macro ------------------------------------------------------------*/
@@ -22,6 +24,18 @@ public:
     ~partition_manager();
     void begin(void);
     void end(void);
+    void printPartition(void);
+    bool verifyMain(void);
+    bool verifyBoot(void);
+    bool verifyMainRollback(void);
+    bool verifyBootRollback(void);
+    bool verifyImageDownload(void);
+    bool upgradeMain(void);
+    bool upgradeBoot(void);
+    bool restoreMain(void);
+    bool restoreBoot(void);
+    bool backupMain(void);
+    bool backupBoot(void);
 
 private:
     SPIFBlockDevice* _spiDevice;
@@ -35,6 +49,9 @@ private:
     FlashSPIBlockDevice _main_rollback;
     /* Boot application rollback region manage */
     FlashSPIBlockDevice _boot_rollback;
+    /* Master boot record information */
+    MasterBootRecord _mbr;
+    std::string readableSize(float bytes);
 };
 
 #endif /* __PARTITON_MANAGER_H */

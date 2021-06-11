@@ -19,6 +19,10 @@ public:
     int read(void *buffer, uint32_t addr, uint32_t size);
     int program(const void *buffer, uint32_t addr, uint32_t size);
     int erase(uint32_t addr, uint32_t size);
+    uint32_t get_read_size(void) const;
+    uint32_t get_program_size(void) const;
+    uint32_t get_erase_size(void) const;
+    uint32_t size(void) const;
 
 private:
     bool is_valid(uint32_t addr, uint32_t size);

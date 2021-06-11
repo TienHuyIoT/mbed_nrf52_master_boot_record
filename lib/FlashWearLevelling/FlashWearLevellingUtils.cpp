@@ -123,13 +123,19 @@ bool FlashWearLevellingUtils::format()
 } // format
 
 /**
- * Format memory type as factory
+ * Return memory information current
 */
-memory_cxt_t *FlashWearLevellingUtils::info()
+memory_cxt_t FlashWearLevellingUtils::info()
 {
-    return &_memory_cxt;
-} // format
+    return _memory_cxt;
+} // info
 
+/** Write data to a region allocated
+ * 
+ *  @param buff     Buffer of data to write
+ *  @param length   Size to write in bytes
+ *  @return         True if read is succeed
+ */
 bool FlashWearLevellingUtils::write(uint8_t *buff, uint16_t *length)
 {
     if (!verifyMemInfo())
@@ -149,6 +155,12 @@ bool FlashWearLevellingUtils::write(uint8_t *buff, uint16_t *length)
     return false;
 } // write
 
+/** Read data from a region allocated
+ * 
+ *  @param buff     Buffer of data to read
+ *  @param length   Size to read in bytes
+ *  @return         True if read is succeed
+ */
 bool FlashWearLevellingUtils::read(uint8_t *buff, uint16_t *length)
 {
     if (!verifyMemInfo())

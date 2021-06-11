@@ -118,7 +118,7 @@ public:
     bool format();
     bool write(uint8_t *buff, uint16_t *length);
     bool read(uint8_t *buff, uint16_t *length);
-    memory_cxt_t *info();
+    memory_cxt_t info();
 
     template <typename varType>
     bool write(varType *data)

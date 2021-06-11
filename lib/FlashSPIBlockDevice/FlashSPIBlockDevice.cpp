@@ -77,6 +77,44 @@ int FlashSPIBlockDevice::erase(uint32_t addr, uint32_t size)
     return SPIF_BD_ERROR_DEVICE_ERROR;
 }
 
+/** Get the size of a readable block
+ *
+ *  @return         Size of a readable block in bytes
+ */
+uint32_t FlashSPIBlockDevice::get_read_size() const
+{
+    return _spiDevice->get_read_size();
+}
+
+/** Get the size of a programable block
+ *
+ *  @return         Size of a programable block in bytes
+ *  @note Must be a multiple of the read size
+ */
+uint32_t FlashSPIBlockDevice::get_program_size() const
+{
+    return _spiDevice->get_program_size();
+}
+
+/** Get the size of a eraseable block
+ *
+ *  @return         Size of a eraseable block in bytes
+ *  @note Must be a multiple of the program size
+ */
+uint32_t FlashSPIBlockDevice::get_erase_size() const
+{
+    return _spiDevice->get_erase_size();
+}
+
+/** Get the total size of the underlying device
+ *
+ *  @return         Size of the underlying device in bytes
+ */
+uint32_t FlashSPIBlockDevice::size() const
+{
+    return _size;
+}
+
 /** Convenience function for checking block erase validity
  *
  *  @param addr     Address of block to begin erasing

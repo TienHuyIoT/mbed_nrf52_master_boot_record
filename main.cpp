@@ -2,7 +2,6 @@
 #include "SPIFBlockDevice.h"
 #include "pinmap_ex.h"
 #include <SPI.h>
-#include "mbr.h"
 #include "mem_layout.h"
 #include "partition_manager.h"
 #include "console_dbg.h"
@@ -25,29 +24,20 @@ const PinMapSPI PinMap_SPI[1] = {
 /* Init SPI Block Device */
 SPIFBlockDevice spiFlash(FSPI_MOSI_PIN, FSPI_MISO_PIN, FSPI_CLK_PIN, FSPI_CS_PIN);
 partition_manager partition_mng(&spiFlash);
-MasterBootRecord mbr;
 
 DigitalOut kx022_cs(KX022_CS_PIN);
 
 int main()
 {
-    mbr_info_t mbr_info;
-
     MAIN_CONSOLE("\r\n\r\n");
     MAIN_TAG_CONSOLE("===================================================");
 
     kx022_cs = 1; /* unselect spi bus kx022 */
 
     partition_mng.begin();
-
-    mbr.begin();
-    mbr.load(&mbr_info);
-    
-    mbr.end();
     partition_mng.end();
     while(1) {};
 
     MAIN_TAG_CONSOLE("Starting application 0x%0X", MAIN_APPLICATION_ADDR);
-    ThisThread::sleep_for(1000ms);
     mbed_start_application(MAIN_APPLICATION_ADDR);
 }

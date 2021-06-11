@@ -5,7 +5,7 @@ Internal memory layout
 |                   |
 |    Application    |
 | (is main program) |   MAIN_APPLICATION_REGION_SIZE
-|       (628K)      |
+|       (652K)      |
 |                   |
 +-------------------+   MAIN_APPLICATION_ADDR
 |                   |
@@ -29,7 +29,7 @@ External memory layout
 |-------------------|   (0x800000) EX_MEM_END_ADDR
 |                   |
 |        Data       |
-|       (6068K)     |   CHASING_DATA_REGION_SIZE
+|       (6216K)     |   CHASING_DATA_REGION_SIZE
 |                   |
 +-------------------+   CHASING_DATA_ADDR
 |                   |
@@ -40,7 +40,7 @@ External memory layout
 |                   |
 |    App rollback   |
 | (is main program) |   MAIN_APPLICATION_ROLLBACK_REGION_SIZE
-|       (628K)      |
+|       (652K)      |
 |                   |
 +-------------------+   MAIN_APPLICATION_ROLLBACK_ADDR
 |                   |
