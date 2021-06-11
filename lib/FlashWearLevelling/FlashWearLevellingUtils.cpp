@@ -2,11 +2,9 @@
 #include "util_crc32.h"
 
 /**
- * @brief Calculator CRC32 buffer.
- * @param [in] buff The buffer data write into flash.
- * @param [in] length The length of buffer write into flash.
+ * @brief Calculator CRC32 memory.
  */
-uint32_t calculator_crc32(memory_cxt_t* mem)
+static uint32_t fwl_header_crc32(memory_cxt_t* mem)
 {
     uint32_t crc;
 
@@ -18,7 +16,7 @@ uint32_t calculator_crc32(memory_cxt_t* mem)
     
     FWL_TAG_INFO("CRC32: %08X", crc);
     return crc;
-} // calculator_crc32
+} // fwl_header_crc32
 
 FlashWearLevellingUtils::
     FlashWearLevellingUtils(uint32_t start_addr,
@@ -467,7 +465,7 @@ bool FlashWearLevellingUtils::saveHeader(memory_cxt_t *mem)
     /* Make data address */
     mem->data.addr = temp.header.nextAddr + _header2data_offset_length;
     /* Make CRC */
-    mem->header.crc32 = calculator_crc32(mem);
+    mem->header.crc32 = fwl_header_crc32(mem);
 
 #if (1)
     FWL_TAG_INFO("[saveHeader] header.crc32 0x%X", mem->header.crc32);
@@ -570,8 +568,8 @@ bool FlashWearLevellingUtils::loadData(memory_cxt_t *mem)
     }
 
     /* Checksum */
-    FWL_TAG_INFO("[loadData] calculator_crc32");
-    if (calculator_crc32(mem) != mem->header.crc32)
+    FWL_TAG_INFO("[loadData] fwl_header_crc32");
+    if (fwl_header_crc32(mem) != mem->header.crc32)
     {
         FWL_TAG_INFO("[loadData] CRC32 header failed!");
         _pCallbacks->onStatus(FlashWearLevellingCallbacks::status_t::ERROR_CRC_DATA);

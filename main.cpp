@@ -35,6 +35,7 @@ int main()
     kx022_cs = 1; /* unselect spi bus kx022 */
 
     partition_mng.begin();
+    partition_mng.verifyMain();
     partition_mng.end();
     while(1) {};
 

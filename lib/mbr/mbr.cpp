@@ -42,7 +42,7 @@ MasterBootRecord::mbr_status_t MasterBootRecord::begin(void)
         return MBR_ERROR;
     }
 
-    load();
+    this->load();
     return MBR_OK;
 }
 
@@ -179,56 +179,56 @@ void MasterBootRecord::printMbrInfo(void)
         MBR_TAG_PRINTF("main_app:");
         MBR_TAG_PRINTF("\t startup_addr: 0x%x", _mbr_info.main_app.startup_addr);
         MBR_TAG_PRINTF("\t max_size: %s", readableSize(_mbr_info.main_app.max_size).c_str());
-        MBR_TAG_PRINTF("\t checksum: 0x%x", _mbr_info.main_app.checksum);
-        MBR_TAG_PRINTF("\t size: %u(%s)", _mbr_info.main_app.size, readableSize(_mbr_info.main_app.size).c_str());
+        MBR_TAG_PRINTF("\t checksum: 0x%x", _mbr_info.main_app.fw_header.checksum);
+        MBR_TAG_PRINTF("\t size: %u(%s)", _mbr_info.main_app.fw_header.size, readableSize(_mbr_info.main_app.fw_header.size).c_str());
         MBR_TAG_PRINTF("\t type: mem(%u), enc(%u), app(%u)\n", 
-                        _mbr_info.main_app.type.mem,
-                        _mbr_info.main_app.type.enc,
-                        _mbr_info.main_app.type.app);
+                        _mbr_info.main_app.fw_header.type.mem,
+                        _mbr_info.main_app.fw_header.type.enc,
+                        _mbr_info.main_app.fw_header.type.app);
 
         MBR_TAG_PRINTF("boot_app:");
         MBR_TAG_PRINTF("\t startup_addr: 0x%x", _mbr_info.boot_app.startup_addr);
         MBR_TAG_PRINTF("\t max_size: %s", readableSize(_mbr_info.boot_app.max_size).c_str());
-        MBR_TAG_PRINTF("\t checksum: 0x%x", _mbr_info.boot_app.checksum);
-        MBR_TAG_PRINTF("\t size: %u(%s)", _mbr_info.boot_app.size, 
-                        readableSize(_mbr_info.main_app.size).c_str());
+        MBR_TAG_PRINTF("\t checksum: 0x%x", _mbr_info.boot_app.fw_header.checksum);
+        MBR_TAG_PRINTF("\t size: %u(%s)", _mbr_info.boot_app.fw_header.size, 
+                        readableSize(_mbr_info.main_app.fw_header.size).c_str());
         MBR_TAG_PRINTF("\t type: mem(%u), enc(%u), app(%u)\n", 
-                        _mbr_info.boot_app.type.mem,
-                        _mbr_info.boot_app.type.enc,
-                        _mbr_info.boot_app.type.app);
+                        _mbr_info.boot_app.fw_header.type.mem,
+                        _mbr_info.boot_app.fw_header.type.enc,
+                        _mbr_info.boot_app.fw_header.type.app);
 
         MBR_TAG_PRINTF("main_rollback:");
         MBR_TAG_PRINTF("\t startup_addr: 0x%x", _mbr_info.main_rollback.startup_addr);
         MBR_TAG_PRINTF("\t max_size: %s", readableSize(_mbr_info.main_rollback.max_size).c_str());
-        MBR_TAG_PRINTF("\t checksum: 0x%x", _mbr_info.main_rollback.checksum);
-        MBR_TAG_PRINTF("\t size: %u(%s)", _mbr_info.main_rollback.size, 
-                        readableSize(_mbr_info.main_rollback.size).c_str());
+        MBR_TAG_PRINTF("\t checksum: 0x%x", _mbr_info.main_rollback.fw_header.checksum);
+        MBR_TAG_PRINTF("\t size: %u(%s)", _mbr_info.main_rollback.fw_header.size, 
+                        readableSize(_mbr_info.main_rollback.fw_header.size).c_str());
         MBR_TAG_PRINTF("\t type: mem(%u), enc(%u), app(%u)\n", 
-                        _mbr_info.main_rollback.type.mem,
-                        _mbr_info.main_rollback.type.enc,
-                        _mbr_info.main_rollback.type.app);
+                        _mbr_info.main_rollback.fw_header.type.mem,
+                        _mbr_info.main_rollback.fw_header.type.enc,
+                        _mbr_info.main_rollback.fw_header.type.app);
 
         MBR_TAG_PRINTF("boot_rollback:");
         MBR_TAG_PRINTF("\t startup_addr: 0x%x", _mbr_info.boot_rollback.startup_addr);
         MBR_TAG_PRINTF("\t max_size: %s", readableSize(_mbr_info.boot_rollback.max_size).c_str());
-        MBR_TAG_PRINTF("\t checksum: 0x%x", _mbr_info.boot_rollback.checksum);
-        MBR_TAG_PRINTF("\t size: %u(%s)", _mbr_info.boot_rollback.size, 
-                        readableSize(_mbr_info.boot_rollback.size).c_str());
+        MBR_TAG_PRINTF("\t checksum: 0x%x", _mbr_info.boot_rollback.fw_header.checksum);
+        MBR_TAG_PRINTF("\t size: %u(%s)", _mbr_info.boot_rollback.fw_header.size, 
+                        readableSize(_mbr_info.boot_rollback.fw_header.size).c_str());
         MBR_TAG_PRINTF("\t type: mem(%u), enc(%u), app(%u)\n", 
-                        _mbr_info.boot_rollback.type.mem,
-                        _mbr_info.boot_rollback.type.enc,
-                        _mbr_info.boot_rollback.type.app);
+                        _mbr_info.boot_rollback.fw_header.type.mem,
+                        _mbr_info.boot_rollback.fw_header.type.enc,
+                        _mbr_info.boot_rollback.fw_header.type.app);
 
         MBR_TAG_PRINTF("image_download:");
         MBR_TAG_PRINTF("\t startup_addr: 0x%x", _mbr_info.image_download.startup_addr);
         MBR_TAG_PRINTF("\t max_size: %s", readableSize(_mbr_info.image_download.max_size).c_str());
-        MBR_TAG_PRINTF("\t checksum: 0x%x", _mbr_info.image_download.checksum);
-        MBR_TAG_PRINTF("\t size: %u(%s)", _mbr_info.image_download.size, 
-                        readableSize(_mbr_info.image_download.size).c_str());
+        MBR_TAG_PRINTF("\t checksum: 0x%x", _mbr_info.image_download.fw_header.checksum);
+        MBR_TAG_PRINTF("\t size: %u(%s)", _mbr_info.image_download.fw_header.size, 
+                        readableSize(_mbr_info.image_download.fw_header.size).c_str());
         MBR_TAG_PRINTF("\t type: mem(%u), enc(%u), app(%u)\n",
-                        _mbr_info.image_download.type.mem,
-                        _mbr_info.image_download.type.enc,
-                        _mbr_info.image_download.type.app);
+                        _mbr_info.image_download.fw_header.type.mem,
+                        _mbr_info.image_download.fw_header.type.enc,
+                        _mbr_info.image_download.fw_header.type.app);
 
         MBR_TAG_PRINTF("dfu_num: %u", _mbr_info.dfu_num);
         MBR_TAG_PRINTF("hw_version_str: %16s", _mbr_info.hw_version_str);

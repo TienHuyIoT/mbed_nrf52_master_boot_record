@@ -52,6 +52,8 @@ private:
     /* Master boot record information */
     MasterBootRecord _mbr;
     std::string readableSize(float bytes);
+    bool verify(app_info_t* app);
+    uint32_t CRC32(app_info_t* app);
 };
 
 #endif /* __PARTITON_MANAGER_H */

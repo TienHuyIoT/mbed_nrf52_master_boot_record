@@ -96,8 +96,6 @@ public:
 
 extern FlashWearLevellingCallbacks defaultCallback;
 
-extern uint32_t calculator_crc32(memory_cxt_t *mem);
-
 class FlashWearLevellingUtils
 {
     typedef enum

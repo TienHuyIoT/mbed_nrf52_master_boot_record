@@ -1,5 +1,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "partition_manager.h"
+#include "util_crc32.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -21,6 +22,7 @@ partition_manager::~partition_manager()
     _main.deinit();
     _boot.deinit();
     _mbr.end();
+    _spiDevice->deinit();
 }
 
 void partition_manager::begin(void)
@@ -38,6 +40,7 @@ void partition_manager::end(void)
     _main.deinit();
     _boot.deinit();
     _mbr.end();
+    _spiDevice->deinit();
 }
 
 void partition_manager::printPartition(void)
@@ -89,7 +92,14 @@ void partition_manager::printPartition(void)
 
 }
 
-bool partition_manager::verifyMain(void) {return true;}
+bool partition_manager::verifyMain(void)
+{
+    app_info_t app;
+    app = _mbr.getMainParams();
+    this->verify(&app);
+    return true;
+}
+
 bool partition_manager::verifyBoot(void) {return true;}
 bool partition_manager::verifyMainRollback(void) {return true;}
 bool partition_manager::verifyBootRollback(void) {return true;}
@@ -100,6 +110,98 @@ bool partition_manager::restoreMain(void) {return true;}
 bool partition_manager::restoreBoot(void) {return true;}
 bool partition_manager::backupMain(void) {return true;}
 bool partition_manager::backupBoot(void) {return true;}
+
+bool partition_manager::verify(app_info_t* app)
+{
+  uint32_t crc;
+  bool result = false;
+
+  crc = this->CRC32(app);
+  if(crc == app->fw_header.checksum)
+  {
+    result = true;
+    PARTITION_MNG_TAG_PRINTF("App checksum verify OK");
+  }
+  else
+  {
+    result = false;
+    PARTITION_MNG_TAG_PRINTF("App checksum verify Fail");
+  }
+
+  return result;
+}
+
+/**
+ * @brief Calculator CRC32 partition.
+ */
+uint32_t partition_manager::CRC32(app_info_t* app)
+{
+    uint32_t crc;
+
+    PARTITION_MNG_TAG_PRINTF("[CRC32] addr=%u, size=%u", app->startup_addr, app->fw_header.size);
+    CRC32_Start(0);
+    /* Calculator CRC 12-byte of fw_header*/
+    CRC32_Accumulate((uint8_t *) &(app->fw_header.size), 12U);
+    if (app->fw_header.type.mem == MasterBootRecord::MEMORY_INTERNAL)
+    {
+        if (app->fw_header.size > app->max_size)
+        {
+            PARTITION_MNG_TAG_PRINTF("[CRC32] internal fw_header size error");
+            return 0;
+        }
+        CRC32_Accumulate((uint8_t *) app->startup_addr, app->fw_header.size);
+    }
+    else
+    {
+        uint32_t block_size = 4096;
+        /* Allocate dynamic memory */
+        uint8_t *ptr_data = new (std::nothrow) uint8_t[block_size];
+        if (ptr_data == nullptr)
+        {
+            PARTITION_MNG_TAG_PRINTF("[CRC32] allocate memory failed!");
+            return 0;
+        }
+
+        uint32_t addr;
+        uint32_t remain_size;
+        uint32_t read_size;
+        FlashSPIBlockDevice* spiFlash;
+        spiFlash = new FlashSPIBlockDevice(_spiDevice, app->startup_addr, app->max_size);
+
+        remain_size = app->fw_header.size;
+        addr = 0;
+
+        if (remain_size > app->max_size)
+        {
+            PARTITION_MNG_TAG_PRINTF("[CRC32] external fw_header size error");
+            remain_size = app->max_size;
+        }
+
+        while (remain_size)
+        {
+            if (remain_size > block_size)
+            {
+                read_size = block_size;
+            }
+            else
+            {
+                read_size = remain_size;
+            }
+
+            spiFlash->read(ptr_data, addr, read_size);
+            CRC32_Accumulate((uint8_t *) ptr_data, read_size);
+            addr += read_size;
+            remain_size -= read_size;
+        }
+
+        delete[] ptr_data;
+        delete spiFlash;
+    }
+    crc = CRC32_Get();
+    
+    PARTITION_MNG_TAG_PRINTF("CRC32: %08X", crc);
+    return crc;
+} // fwl_header_crc32
 
 std::string partition_manager::readableSize(float bytes) {
     char buff[10];
