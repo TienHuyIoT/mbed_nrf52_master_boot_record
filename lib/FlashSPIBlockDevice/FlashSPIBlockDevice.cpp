@@ -119,7 +119,7 @@ uint32_t FlashSPIBlockDevice::size() const
  *
  *  @param addr     Address of block to begin erasing
  *  @param size     Size to erase in bytes
- *  @return         True if erase is valid for underlying block device
+ *  @return         True if addr and size is valid for underlying block device
  */
 bool FlashSPIBlockDevice::is_valid(uint32_t addr, uint32_t size)
 {

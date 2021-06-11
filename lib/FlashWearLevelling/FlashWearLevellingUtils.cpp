@@ -401,7 +401,7 @@ bool FlashWearLevellingUtils::header_isDefault(void)
     FWL_TAG_INFO("[header_isDefault] header.nextAddr %u(0x%X)", mem.header.nextAddr, mem.header.nextAddr);
     FWL_TAG_INFO("[header_isDefault] header.addr %u(0x%X)", mem.header.addr, mem.header.addr);
     FWL_TAG_INFO("[header_isDefault] header.prevAddr %u(0x%X)", mem.header.prevAddr, mem.header.prevAddr);
-    FWL_TAG_INFO("[header_isDefault] dataLength %u", mem.header.dataLength);
+    FWL_TAG_INFO("[header_isDefault] header.dataLength %u", mem.header.dataLength);
 #endif
 
     return true;

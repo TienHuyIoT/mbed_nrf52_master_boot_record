@@ -35,9 +35,12 @@ int main()
     kx022_cs = 1; /* unselect spi bus kx022 */
 
     partition_mng.begin();
-    partition_mng.verifyMain();
+    // partition_mng.verifyMain();
+    // partition_mng.backupMain();
+    // partition_mng.verifyMainRollback();
+    partition_mng.restoreMain();
     partition_mng.end();
-    while(1) {};
+    // while(1) {};
 
     MAIN_TAG_CONSOLE("Starting application 0x%0X", MAIN_APPLICATION_ADDR);
     mbed_start_application(MAIN_APPLICATION_ADDR);

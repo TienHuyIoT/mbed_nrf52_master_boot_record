@@ -35,18 +35,25 @@
 /* 55(signal)-00/01(boot/app)-0101(encrypt image)-01(external) */
 #define FW_IMAGE_DOWNLOAD_TYPE 0x55000101
 
+/*
+0x6981f042 
+0x5BE3C09B
+*/
+
 #define MBR_INFO_DEFAULT                                                            \
     {                                                                               \
         .main_app = {.startup_addr = MAIN_APPLICATION_ADDR,                         \
                      .max_size = MAIN_APPLICATION_REGION_SIZE,                      \
-                     .fw_header = {.checksum = 0x6981f042,                          \
-                                   .size = 0x8cdc,                                  \
+                     .fw_header = {.checksum = 0x2D41A2DB,                          \
+                                   .size = 341776,                                  \
                                    .type = {.u32 = FW_APP_MAIN_TYPE},               \
                                    .version = {.u32 = 0x00010003}}},                \
         .main_rollback = {.startup_addr = MAIN_APPLICATION_ROLLBACK_ADDR,           \
                           .max_size = MAIN_APPLICATION_ROLLBACK_REGION_SIZE,        \
-                          .fw_header = {.checksum = MBR_CRC_APP_NONE,               \
-                                        .type = {.u32 = FW_APP_ROLLBACK_TYPE}}},    \
+                          .fw_header = {.checksum = 0x302E2D37,                     \
+                                        .size = 341776,                             \
+                                        .type = {.u32 = FW_APP_ROLLBACK_TYPE},      \
+                                        .version = {.u32 = 0x00010003}}},           \
         .boot_app = {.startup_addr = BOOTLOADER_FACTORY_ADDR,                       \
                      .max_size = BOOTLOADER_FACTORY_REGION_SIZE,                    \
                      .fw_header = {.checksum = MBR_CRC_APP_FACTORY,                 \

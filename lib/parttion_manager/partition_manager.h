@@ -52,6 +52,8 @@ private:
     /* Master boot record information */
     MasterBootRecord _mbr;
     std::string readableSize(float bytes);
+    bool programApp(app_info_t* des, app_info_t* src);
+    bool backupApp(app_info_t* des, app_info_t* src);
     bool verify(app_info_t* app);
     uint32_t CRC32(app_info_t* app);
 };
