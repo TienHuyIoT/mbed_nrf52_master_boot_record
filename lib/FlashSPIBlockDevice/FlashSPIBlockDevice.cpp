@@ -14,6 +14,17 @@ _size(size)
 
 FlashSPIBlockDevice::~FlashSPIBlockDevice()
 {
+    deinit();
+}
+
+int FlashSPIBlockDevice::init(void)
+{
+    return SPIF_BD_ERROR_OK;
+}
+
+int FlashSPIBlockDevice::deinit(void)
+{
+    return SPIF_BD_ERROR_OK;
 }
 
 /** Read blocks from a block device

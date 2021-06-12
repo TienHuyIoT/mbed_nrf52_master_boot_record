@@ -4,10 +4,10 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "mbed.h"
+#include "AES.h"
 #include <string>
 #include "FlashIAPBlockDevice.h"
 #include "FlashSPIBlockDevice.h"
-#include "mem_layout.h"
 #include "mbr.h"
 #include "console_dbg.h"
 
@@ -39,23 +39,15 @@ public:
 
 private:
     SPIFBlockDevice* _spiDevice;
-    /* Main application region manage */
-    FlashIAPBlockDevice _main;
-    /* Boot application region manage */
-    FlashIAPBlockDevice _boot;
-    /* Image download region manage */
-    FlashSPIBlockDevice _image_download;
-    /* Main application rollback region manage */
-    FlashSPIBlockDevice _main_rollback;
-    /* Boot application rollback region manage */
-    FlashSPIBlockDevice _boot_rollback;
-    /* Master boot record information */
     MasterBootRecord _mbr;
+    AES aes128;
     std::string readableSize(float bytes);
     bool programApp(app_info_t* des, app_info_t* src);
     bool backupApp(app_info_t* des, app_info_t* src);
     bool verify(app_info_t* app);
     uint32_t CRC32(app_info_t* app);
+    void aesEncrypt(void *data, size_t length);
+    void aesDecrypt(void *data, size_t length);
 };
 
 #endif /* __PARTITON_MANAGER_H */

@@ -32,48 +32,47 @@
 #define FW_BOOT_TYPE 0x55000000
 /* 55(signal)-00(boot)-01(encrypt image)-01(external) */
 #define FW_BOOT_ROLLBACK_TYPE 0x55000101
-/* 55(signal)-00/01(boot/app)-0101(encrypt image)-01(external) */
-#define FW_IMAGE_DOWNLOAD_TYPE 0x55000101
+/* 55(signal)-00/01(boot/app)-01(encrypt image)-01(external) */
+#define FW_IMAGE_DOWNLOAD_TYPE 0x55010301
 
-/*
-0x6981f042 
-0x5BE3C09B
-*/
-
-#define MBR_INFO_DEFAULT                                                            \
-    {                                                                               \
-        .main_app = {.startup_addr = MAIN_APPLICATION_ADDR,                         \
-                     .max_size = MAIN_APPLICATION_REGION_SIZE,                      \
-                     .fw_header = {.checksum = 0x2D41A2DB,                          \
-                                   .size = 341776,                                  \
-                                   .type = {.u32 = FW_APP_MAIN_TYPE},               \
-                                   .version = {.u32 = 0x00010003}}},                \
-        .main_rollback = {.startup_addr = MAIN_APPLICATION_ROLLBACK_ADDR,           \
-                          .max_size = MAIN_APPLICATION_ROLLBACK_REGION_SIZE,        \
-                          .fw_header = {.checksum = 0x302E2D37,                     \
-                                        .size = 341776,                             \
-                                        .type = {.u32 = FW_APP_ROLLBACK_TYPE},      \
-                                        .version = {.u32 = 0x00010003}}},           \
-        .boot_app = {.startup_addr = BOOTLOADER_FACTORY_ADDR,                       \
-                     .max_size = BOOTLOADER_FACTORY_REGION_SIZE,                    \
-                     .fw_header = {.checksum = MBR_CRC_APP_FACTORY,                 \
-                                   .type = {.u32 = FW_BOOT_TYPE}}},                 \
-        .boot_rollback = {.startup_addr = BOOTLOADER_ROLLBACK_ADDR,                 \
-                          .max_size = BOOTLOADER_ROLLBACK_REGION_SIZE,              \
-                          .fw_header = {.checksum = MBR_CRC_APP_NONE,               \
-                                        .type = {.u32 = FW_BOOT_ROLLBACK_TYPE}}},   \
-        .image_download = {.startup_addr = IMAGE_DOWNLOAD_ADDR,                     \
-                           .max_size = IMAGE_DOWNLOAD_REGION_SIZE,                  \
-                           .fw_header = {.checksum = MBR_CRC_APP_NONE,              \
-                                         .type = {.u32 = FW_IMAGE_DOWNLOAD_TYPE}}}, \
-        .dfu_num = 0,                                                               \
-        .hw_version_str = HW_VERSION_STRING,                                        \
-        .aes = {.key = {0x9a, 0x95, 0x0f, 0x6c, 0x4f, 0xa1, 0xf9, 0x19,             \
-                        0xcb, 0x1e, 0x15, 0x39, 0x56, 0x47, 0x23, 0xe2},            \
-                .iv = {0x45, 0xc4, 0x25, 0x0f, 0x8d, 0x79, 0x85, 0xa1,              \
-                       0xe7, 0x46, 0x92, 0xc7, 0xdd, 0x24, 0x79, 0x83}},            \
-        .common = {.startup_mode = 0 /*MAIN_RUN*/,                                  \
-                   .dfu_mode = 0 /* UPGRADE_MODE_ANY */ }                           \
+#define MBR_INFO_DEFAULT                                                              \
+    {                                                                                 \
+        .main_app = {.startup_addr = MAIN_APPLICATION_ADDR,                           \
+                     .max_size = MAIN_APPLICATION_REGION_SIZE,                        \
+                     .fw_header = {.checksum = 0x2D41A2DB,                            \
+                                   .size = 341776,                                    \
+                                   .type = {.u32 = FW_APP_MAIN_TYPE},                 \
+                                   .version = {.u32 = 0x00010003 /*v0.1.3*/}}},       \
+        .main_rollback = {.startup_addr = MAIN_APPLICATION_ROLLBACK_ADDR,             \
+                          .max_size = MAIN_APPLICATION_ROLLBACK_REGION_SIZE,          \
+                          .fw_header = {.checksum = 0xE797D257,                       \
+                                        .size = 341776,                               \
+                                        .type = {.u32 = FW_APP_ROLLBACK_TYPE},        \
+                                        .version = {.u32 = 0x00010003 /*v0.1.3*/}}},  \
+        .boot_app = {.startup_addr = BOOTLOADER_FACTORY_ADDR,                         \
+                     .max_size = BOOTLOADER_FACTORY_REGION_SIZE,                      \
+                     .fw_header = {.checksum = MBR_CRC_APP_FACTORY,                   \
+                                   .size = 341776,                                    \
+                                   .type = {.u32 = FW_BOOT_TYPE},                     \
+                                   .version = {.u32 = 0x01010001 /*v0.1.3*/}}},       \
+        .boot_rollback = {.startup_addr = BOOTLOADER_ROLLBACK_ADDR,                   \
+                          .max_size = BOOTLOADER_ROLLBACK_REGION_SIZE,                \
+                          .fw_header = {.checksum = MBR_CRC_APP_NONE,                 \
+                                        .size = 341776,                               \
+                                        .type = {.u32 = FW_BOOT_ROLLBACK_TYPE},       \
+                                        .version = {.u32 = 0x00010003 /*v0.1.3*/}}},  \
+        .image_download = {.startup_addr = IMAGE_DOWNLOAD_ADDR,                       \
+                           .max_size = IMAGE_DOWNLOAD_REGION_SIZE,                    \
+                           .fw_header = {.checksum = MBR_CRC_APP_NONE,                \
+                                         .size = 341776,                              \
+                                         .type = {.u32 = FW_IMAGE_DOWNLOAD_TYPE},     \
+                                         .version = {.u32 = 0x00010003 /*v0.1.3*/}}}, \
+        .dfu_num = 0,                                                                 \
+        .hw_version_str = HW_VERSION_STRING,                                          \
+        .aes = {.key = {0x9a, 0x95, 0x0f, 0x6c, 0x4f, 0xa1, 0xf9, 0x19,               \
+                        0xcb, 0x1e, 0x15, 0x39, 0x56, 0x47, 0x23, 0xe2},              \
+                .iv = {0x45, 0xc4, 0x25, 0x0f, 0x8d, 0x79, 0x85, 0xa1,                \
+                       0xe7, 0x46, 0x92, 0xc7, 0xdd, 0x24, 0x79, 0x83}},              \
     }
 
 typedef struct __attribute__((packed, aligned(4)))
@@ -88,10 +87,10 @@ typedef struct __attribute__((packed, aligned(4)))
             uint8_t mem;    /* 0. internal
                             1. external;
                             */
-            uint8_t enc;    /* 0. raw; 
-                            1. Encrypt;
-                            2. Header + raw (image download option);
-                            3. Header + encrypt (image download option);
+            uint8_t enc;    /* 0. image raw; 
+                            1. image encrypt;
+                            2. Header + image raw (image download option);
+                            3. (Header + image raw) encrypt (image download option);
                             */
             uint8_t app;    /* 0. Boot
                             1. App;
@@ -116,6 +115,17 @@ typedef struct __attribute__((packed, aligned(4)))
     uint32_t startup_addr; /* App address startup */
     uint32_t max_size;     /* App size limit */
     firmwareHeader_t fw_header;
+    union
+    {
+        uint32_t u32;
+        struct
+        {
+            uint8_t app_status; /* ref app_status_t */
+            uint8_t NI1;
+            uint8_t NI2;
+            uint8_t NI3;
+        };
+    } common;
 } app_info_t;
 
 typedef struct
@@ -137,7 +147,7 @@ typedef struct __attribute__((packed, aligned(4)))
     AES128_crypto_t aes;
     union
     {
-        uint32_t u32_common;
+        uint32_t u32;
         struct
         {
             uint8_t startup_mode; /* ref startup_mode_t */
@@ -182,17 +192,25 @@ public:
         DATA_HEADER_AND_ENC
     } header_encrypt_t;
 
+    typedef enum
+    {
+        APP_STATUS_NONE = 0,
+        APP_STATUS_OK,
+        APP_STATUS_WAIT_CONFIRM,
+        APP_STATUS_ERROR
+    } app_status_t;
+
     /**
      * @brief  Comm status structures definition
      */
     typedef enum
     {
-        MAIN_RUN,      /* 0. App run */
-        MAIN_ROLLBACK, /* 1. App rollback */
-        BOOT_RUN,      /* 2. boot run */
-        BOOT_ROLLBACK, /* 3. boot rollback */
-        UPGRADE_RUN,   /* 4. New update */
-        APP_NONE       /* 5. App None */
+        MAIN_RUN_MODE,      /* 0. App run */
+        MAIN_ROLLBACK_MODE, /* 1. App rollback */
+        BOOT_RUN_MODE,      /* 2. boot run */
+        BOOT_ROLLBACK_MODE, /* 3. boot rollback */
+        UPGRADE_MODE,       /* 4. New update */
+        NO_APP_MODE         /* 5. App None */
     } startup_mode_t;
 
 public:

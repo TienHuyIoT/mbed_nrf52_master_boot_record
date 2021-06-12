@@ -6,90 +6,116 @@
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 
+static void printData(const void* data, size_t length)
+{
+    const char* dataBytes = (const char*)data;
+    for (size_t i = 0; i < length; i++) {
+        if ((i % 16) == 0)
+            PARTITION_MNG_PRINTF("\t");
+        PARTITION_MNG_PRINTF("%02X ", dataBytes[i]);
+    }
+    PARTITION_MNG_PRINTF("\n");
+}
+
 partition_manager::partition_manager(SPIFBlockDevice* spiDevice) :
 _spiDevice(spiDevice),
 _mbr(),
-_main(MAIN_APPLICATION_ADDR, MAIN_APPLICATION_REGION_SIZE),
-_boot(BOOTLOADER_FACTORY_ADDR, BOOTLOADER_FACTORY_REGION_SIZE),
-_image_download(spiDevice, IMAGE_DOWNLOAD_ADDR, IMAGE_DOWNLOAD_REGION_SIZE),
-_main_rollback(spiDevice, MAIN_APPLICATION_ROLLBACK_ADDR, MAIN_APPLICATION_ROLLBACK_REGION_SIZE),
-_boot_rollback(spiDevice, BOOTLOADER_ROLLBACK_ADDR, BOOTLOADER_ROLLBACK_REGION_SIZE)
+aes128()
 {
 }
 
 partition_manager::~partition_manager()
 {
-    _main.deinit();
-    _boot.deinit();
-    _mbr.end();
-    _spiDevice->deinit();
+    this->end();
 }
 
 void partition_manager::begin(void)
 {
     _spiDevice->init();  
-    _main.init();
-    _boot.init();
     _mbr.begin();
-    this->printPartition();
     _mbr.printMbrInfo();
+    this->printPartition();
 }
 
 void partition_manager::end(void)
 {
-    _main.deinit();
-    _boot.deinit();
     _mbr.end();
     _spiDevice->deinit();
 }
 
 void partition_manager::printPartition(void)
 {
-    PARTITION_MNG_TAG_PRINTF("_spiDevice");
-    uint32_t spiDevice_size =  _spiDevice->size();
-    PARTITION_MNG_TAG_PRINTF("\t size: %llu(%s)", spiDevice_size,
-                                readableSize(spiDevice_size).c_str());
+#if (0)
+    FlashIAPBlockDevice* iapFlash;
+    FlashSPIBlockDevice* spiFlash;
+    app_info_t app;
+    uint32_t size;
+    
+    PARTITION_MNG_TAG_PRINTF("spiDevice");
+    size =  _spiDevice->size();
+    PARTITION_MNG_TAG_PRINTF("\t size: %llu(%s)", size,
+                                readableSize(size).c_str());
     PARTITION_MNG_TAG_PRINTF("\t read size: %llu", _spiDevice->get_read_size());
     PARTITION_MNG_TAG_PRINTF("\t program size: %llu", _spiDevice->get_program_size());
     PARTITION_MNG_TAG_PRINTF("\t erase size: %llu\n", _spiDevice->get_erase_size());
     
-    PARTITION_MNG_TAG_PRINTF("_main");
-    uint32_t main_size =  _main.size();
-    PARTITION_MNG_TAG_PRINTF("\t size: %llu(%s)", main_size,
-                                readableSize(main_size).c_str());
-    PARTITION_MNG_TAG_PRINTF("\t read size: %llu", _main.get_read_size());
-    PARTITION_MNG_TAG_PRINTF("\t program size: %llu", _main.get_program_size());
-    PARTITION_MNG_TAG_PRINTF("\t erase size: %llu\n", _main.get_erase_size());
+    PARTITION_MNG_TAG_PRINTF("main");
+    app = _mbr.getMainParams();
+    iapFlash = new FlashIAPBlockDevice(app.startup_addr, app.max_size);
+    iapFlash->init();
+    size =  iapFlash->size();
+    PARTITION_MNG_TAG_PRINTF("\t size: %llu(%s)", size,
+                                readableSize(size).c_str());
+    PARTITION_MNG_TAG_PRINTF("\t read size: %llu", iapFlash->get_read_size());
+    PARTITION_MNG_TAG_PRINTF("\t program size: %llu", iapFlash->get_program_size());
+    PARTITION_MNG_TAG_PRINTF("\t erase size: %llu\n", iapFlash->get_erase_size());
+    delete iapFlash;
 
-    PARTITION_MNG_TAG_PRINTF("_boot");
-    uint32_t boot_size =  _boot.size();
-    PARTITION_MNG_TAG_PRINTF("\t size: %llu(%s)", boot_size,
-                                readableSize(boot_size).c_str());
-    PARTITION_MNG_TAG_PRINTF("\t read size: %llu", _boot.get_read_size());
-    PARTITION_MNG_TAG_PRINTF("\t program size: %llu", _boot.get_program_size());
-    PARTITION_MNG_TAG_PRINTF("\t erase size: %llu\n", _boot.get_erase_size());
+    PARTITION_MNG_TAG_PRINTF("boot");
+    app = _mbr.getBootParams();
+    iapFlash = new FlashIAPBlockDevice(app.startup_addr, app.max_size);
+    iapFlash->init();
+    size =  iapFlash->size();
+    PARTITION_MNG_TAG_PRINTF("\t size: %llu(%s)", size,
+                                readableSize(size).c_str());
+    PARTITION_MNG_TAG_PRINTF("\t read size: %llu", iapFlash->get_read_size());
+    PARTITION_MNG_TAG_PRINTF("\t program size: %llu", iapFlash->get_program_size());
+    PARTITION_MNG_TAG_PRINTF("\t erase size: %llu\n", iapFlash->get_erase_size());
+    delete iapFlash;
 
-    PARTITION_MNG_TAG_PRINTF("_main_rollback");
-    PARTITION_MNG_TAG_PRINTF("\t size: %llu(%s)", _main_rollback.size(),
-                                readableSize(_main_rollback.size()).c_str());
-    PARTITION_MNG_TAG_PRINTF("\t read size: %llu", _main_rollback.get_read_size());
-    PARTITION_MNG_TAG_PRINTF("\t program size: %llu", _main_rollback.get_program_size());
-    PARTITION_MNG_TAG_PRINTF("\t erase size: %llu\n", _main_rollback.get_erase_size());
+    PARTITION_MNG_TAG_PRINTF("main rollback");
+    app = _mbr.getMainRollbackParams();
+    spiFlash = new FlashSPIBlockDevice(_spiDevice, app.startup_addr, app.max_size);
+    size =  spiFlash->size();
+    PARTITION_MNG_TAG_PRINTF("\t size: %llu(%s)", size,
+                                readableSize(size).c_str());
+    PARTITION_MNG_TAG_PRINTF("\t read size: %llu", spiFlash->get_read_size());
+    PARTITION_MNG_TAG_PRINTF("\t program size: %llu", spiFlash->get_program_size());
+    PARTITION_MNG_TAG_PRINTF("\t erase size: %llu\n", spiFlash->get_erase_size());
+    delete spiFlash;
 
-    PARTITION_MNG_TAG_PRINTF("_boot_rollback");
-    PARTITION_MNG_TAG_PRINTF("\t size: %llu(%s)", _boot_rollback.size(),
-                                readableSize(_boot_rollback.size()).c_str());
-    PARTITION_MNG_TAG_PRINTF("\t read size: %llu", _boot_rollback.get_read_size());
-    PARTITION_MNG_TAG_PRINTF("\t program size: %llu", _boot_rollback.get_program_size());
-    PARTITION_MNG_TAG_PRINTF("\t erase size: %llu\n", _boot_rollback.get_erase_size());
+    PARTITION_MNG_TAG_PRINTF("boot rollback");
+    app = _mbr.getBootRollbackParams();
+    spiFlash = new FlashSPIBlockDevice(_spiDevice, app.startup_addr, app.max_size);
+    size =  spiFlash->size();
+    PARTITION_MNG_TAG_PRINTF("\t size: %llu(%s)", size,
+                                readableSize(size).c_str());
+    PARTITION_MNG_TAG_PRINTF("\t read size: %llu", spiFlash->get_read_size());
+    PARTITION_MNG_TAG_PRINTF("\t program size: %llu", spiFlash->get_program_size());
+    PARTITION_MNG_TAG_PRINTF("\t erase size: %llu\n", spiFlash->get_erase_size());
+    delete spiFlash;
 
-    PARTITION_MNG_TAG_PRINTF("_image_download");
-    PARTITION_MNG_TAG_PRINTF("\t size: %llu(%s)", _image_download.size(),
-                                readableSize(_image_download.size()).c_str());
-    PARTITION_MNG_TAG_PRINTF("\t read size: %llu", _image_download.get_read_size());
-    PARTITION_MNG_TAG_PRINTF("\t program size: %llu", _image_download.get_program_size());
-    PARTITION_MNG_TAG_PRINTF("\t erase size: %llu\n", _image_download.get_erase_size());
-
+    PARTITION_MNG_TAG_PRINTF("image download");
+    app = _mbr.getImageDownloadParams();
+    spiFlash = new FlashSPIBlockDevice(_spiDevice, app.startup_addr, app.max_size);
+    size =  spiFlash->size();
+    PARTITION_MNG_TAG_PRINTF("\t size: %llu(%s)", size,
+                                readableSize(size).c_str());
+    PARTITION_MNG_TAG_PRINTF("\t read size: %llu", spiFlash->get_read_size());
+    PARTITION_MNG_TAG_PRINTF("\t program size: %llu", spiFlash->get_program_size());
+    PARTITION_MNG_TAG_PRINTF("\t erase size: %llu\n", spiFlash->get_erase_size());
+    delete spiFlash;
+#endif
 }
 
 /** 
@@ -163,7 +189,7 @@ bool partition_manager::restoreMain(void)
         PARTITION_MNG_TAG_PRINTF("[restoreMain] update des crc32");
         des.fw_header.checksum = CRC32(&des);
         PARTITION_MNG_TAG_PRINTF("[restoreMain] update des into MBR");
-        _mbr.setMainRollbackParams(&des);
+        _mbr.setMainParams(&des);
         if(_mbr.commit() == MasterBootRecord::MBR_OK)
         {
             PARTITION_MNG_TAG_PRINTF("[restoreMain]\t succeed!");
@@ -223,19 +249,20 @@ bool partition_manager::programApp(app_info_t* des, app_info_t* src)
 {
     FlashSPIBlockDevice* srcFlash;
     FlashIAPBlockDevice* desFlash;
-    uint32_t addr;
+    uint32_t addr, offset;
     uint32_t remain_size;
     uint32_t read_size;
     uint32_t block_size;
     uint32_t crc;
     uint8_t *ptr_data;
     bool status_isOK = true;
+    bool decrypt_image = true;
 
     PARTITION_MNG_TAG_PRINTF("[programApp]>> start");
-    PARTITION_MNG_TAG_PRINTF("[programApp]\t Src internal: addr=0x%x; size=%u",
+    PARTITION_MNG_TAG_PRINTF("[programApp]\t Src external: addr=0x%x; size=%u",
                             src->startup_addr,
                             src->fw_header.size);
-    PARTITION_MNG_TAG_PRINTF("[programApp]\t Des external: addr=0x%x; max_size=%u",
+    PARTITION_MNG_TAG_PRINTF("[programApp]\t Des internal: addr=0x%x; max_size=%u",
                             des->startup_addr,
                             des->max_size);
 
@@ -274,9 +301,33 @@ bool partition_manager::programApp(app_info_t* des, app_info_t* src)
         return false;
     }
 
-    remain_size = src->fw_header.size;
-    addr = 0;
+    if (MasterBootRecord::DATA_ENC == src->fw_header.type.enc)
+    {
+        PARTITION_MNG_TAG_PRINTF("[programApp]\t processing decrypt image");
+        decrypt_image = true;
+        offset = 0;
+    }
+    else if (MasterBootRecord::DATA_HEADER_AND_ENC == src->fw_header.type.enc)
+    {
+        PARTITION_MNG_TAG_PRINTF("[programApp]\t processing decrypt image");
+        decrypt_image = true;
+        offset = sizeof(firmwareHeader_t);
+    }
+    else if (MasterBootRecord::DATA_HEADER_AND_RAW == src->fw_header.type.enc)
+    {
+        PARTITION_MNG_TAG_PRINTF("[programApp]\t processing decrypt image");
+        decrypt_image = false;
+        offset = sizeof(firmwareHeader_t);
+    }
+    else
+    {
+        PARTITION_MNG_TAG_PRINTF("[programApp]\t processing image");
+        decrypt_image = false;
+        offset = 0;
+    }
 
+    remain_size = src->fw_header.size - offset;
+    addr = 0;
     while (remain_size)
     {
         if (remain_size > block_size)
@@ -288,7 +339,12 @@ bool partition_manager::programApp(app_info_t* des, app_info_t* src)
             read_size = remain_size;
         }
         desFlash->erase(addr, block_size);
-        srcFlash->read(ptr_data, addr, read_size);
+        srcFlash->read(ptr_data, addr + offset, read_size);
+        if (decrypt_image)
+        {
+            /* Decrypt data before write to des partition */
+            aesDecrypt(ptr_data, read_size);
+        }
         crc = Crc32_CalculateBuffer(ptr_data, read_size);
         desFlash->program(ptr_data, addr, read_size);
         desFlash->read(ptr_data, addr, read_size);
@@ -328,6 +384,7 @@ bool partition_manager::backupApp(app_info_t* des, app_info_t* src)
     uint32_t crc;
     uint8_t *ptr_data;
     bool status_isOK = true;
+    bool encrypt_image = true;
 
     PARTITION_MNG_TAG_PRINTF("[backupApp]>> start");
     PARTITION_MNG_TAG_PRINTF("[backupApp]\t Src internal: addr=0x%x; size=%u",
@@ -372,9 +429,19 @@ bool partition_manager::backupApp(app_info_t* des, app_info_t* src)
         return false;
     }
 
+    if (MasterBootRecord::DATA_ENC == des->fw_header.type.enc)
+    {
+        PARTITION_MNG_TAG_PRINTF("[backupApp]\t processing encrypt image");
+        encrypt_image = true;
+    }
+    else
+    {
+        PARTITION_MNG_TAG_PRINTF("[backupApp]\t processing image");
+        encrypt_image = false;
+    }
+
     remain_size = src->fw_header.size;
     addr = 0;
-
     while (remain_size)
     {
         if (remain_size > block_size)
@@ -387,6 +454,10 @@ bool partition_manager::backupApp(app_info_t* des, app_info_t* src)
         }
         desFlash->erase(addr, block_size);
         srcFlash->read(ptr_data, addr, read_size);
+        if (encrypt_image)
+        {
+            aesEncrypt(ptr_data, read_size);
+        }
         crc = Crc32_CalculateBuffer(ptr_data, read_size);
         desFlash->program(ptr_data, addr, read_size);
         desFlash->read(ptr_data, addr, read_size);
@@ -445,7 +516,7 @@ uint32_t partition_manager::CRC32(app_info_t* app)
     uint32_t crc;
 
     PARTITION_MNG_TAG_PRINTF("[CRC32]>> start");
-    PARTITION_MNG_TAG_PRINTF("[CRC32]\t addr=0%X, size=%u", app->startup_addr, app->fw_header.size);
+    PARTITION_MNG_TAG_PRINTF("[CRC32]\t addr=0x%X, size=%u", app->startup_addr, app->fw_header.size);
     CRC32_Start(0);
     /* Calculator CRC 12-byte of fw_header*/
     CRC32_Accumulate((uint8_t *) &(app->fw_header.size), 12U);
@@ -500,6 +571,7 @@ uint32_t partition_manager::CRC32(app_info_t* app)
             }
 
             spiFlash->read(ptr_data, addr, read_size);
+            // aesDecrypt(ptr_data, read_size);
             CRC32_Accumulate((uint8_t *) ptr_data, read_size);
             addr += read_size;
             remain_size -= read_size;
@@ -515,6 +587,41 @@ uint32_t partition_manager::CRC32(app_info_t* app)
     PARTITION_MNG_TAG_PRINTF("[CRC32]<< finish");
     return crc;
 } // fwl_header_crc32
+
+void partition_manager::aesEncrypt(void *data, size_t length)
+{
+    AES128_crypto_t mbr_aes = _mbr.getAes128Params();
+#if (0)
+    //Encrypt the message in-place
+    PARTITION_MNG_TAG_PRINTF("[aesEncrypt]>> start");
+    PARTITION_MNG_TAG_PRINTF("[aesEncrypt]\t Key");
+    printData(mbr_aes.key, AES128_LENGTH);
+    PARTITION_MNG_TAG_PRINTF("[aesEncrypt]\t Iv");
+    printData(mbr_aes.iv, AES128_LENGTH);
+    PARTITION_MNG_TAG_PRINTF("[aesEncrypt]\t Data length %u", length);
+#endif
+    aes128.setup((const char*)mbr_aes.key, AES::KEY_128, AES::MODE_CBC, (const char*)mbr_aes.iv);
+    aes128.encrypt(data, length);
+    aes128.clear();
+    // PARTITION_MNG_TAG_PRINTF("[aesEncrypt]>> finish");
+}
+
+void partition_manager::aesDecrypt(void *data, size_t length)
+{
+    AES128_crypto_t mbr_aes = _mbr.getAes128Params();
+#if (0)
+    PARTITION_MNG_TAG_PRINTF("[aesDecrypt]>> start");
+    PARTITION_MNG_TAG_PRINTF("[aesDecrypt]\t Key");
+    printData(mbr_aes.key, AES128_LENGTH);
+    PARTITION_MNG_TAG_PRINTF("[aesDecrypt]\t Iv");
+    printData(mbr_aes.iv, AES128_LENGTH);
+    PARTITION_MNG_TAG_PRINTF("[aesDecrypt]\t Data length %u", length);
+#endif
+    aes128.setup((const char*)mbr_aes.key, AES::KEY_128, AES::MODE_CBC, (const char*)mbr_aes.iv);
+    aes128.decrypt(data, length);
+    aes128.clear();
+    // PARTITION_MNG_TAG_PRINTF("[aesDecrypt]>> finish");
+}
 
 std::string partition_manager::readableSize(float bytes) {
     char buff[10];

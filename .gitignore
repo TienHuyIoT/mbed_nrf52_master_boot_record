@@ -4,3 +4,7 @@
 *mbed-os
 *resources
 *.py*
+BUILD
+.mbed
+AES
+mbed-os

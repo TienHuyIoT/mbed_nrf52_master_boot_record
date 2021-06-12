@@ -16,6 +16,8 @@ public:
     FlashSPIBlockDevice(SPIFBlockDevice* spiDevice, uint32_t baseAddr, uint32_t size);
     ~FlashSPIBlockDevice();
 
+    int init(void);
+    int deinit(void);
     int read(void *buffer, uint32_t addr, uint32_t size);
     int program(const void *buffer, uint32_t addr, uint32_t size);
     int erase(uint32_t addr, uint32_t size);
