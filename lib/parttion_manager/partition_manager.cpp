@@ -49,9 +49,9 @@ MasterBootRecord::startup_mode_t partition_manager::getStartUpModeFromMBR(void)
 }
 
 /* return true if succeed */
-bool partition_manager::setStartUpModeFromMBR(MasterBootRecord::startup_mode_t mode)
+bool partition_manager::setStartUpModeToMBR(MasterBootRecord::startup_mode_t mode)
 {
-    PARTITION_MNG_TAG_PRINTF("[setStartUpModeFromMBR]");
+    PARTITION_MNG_TAG_PRINTF("[setStartUpModeToMBR]");
     _mbr.setStartUpMode(mode);
     return (_mbr.commit() == MasterBootRecord::MBR_OK);
 }

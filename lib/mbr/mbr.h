@@ -39,14 +39,14 @@
     {                                                                                 \
         .main_app = {.startup_addr = MAIN_APPLICATION_ADDR,                           \
                      .max_size = MAIN_APPLICATION_REGION_SIZE,                        \
-                     .fw_header = {.checksum = 0x2D41A2DB,                            \
-                                   .size = 341776,                                    \
+                     .fw_header = {.checksum = 0x1CE7A079,                            \
+                                   .size = 341816,                                    \
                                    .type = {.u32 = FW_APP_MAIN_TYPE},                 \
                                    .version = {.u32 = 0x00010003 /*v0.1.3*/}}},       \
         .main_rollback = {.startup_addr = MAIN_APPLICATION_ROLLBACK_ADDR,             \
                           .max_size = MAIN_APPLICATION_ROLLBACK_REGION_SIZE,          \
-                          .fw_header = {.checksum = 0xE797D257,                       \
-                                        .size = 341776,                               \
+                          .fw_header = {.checksum = 0xCACBA276,                       \
+                                        .size = 341816,                               \
                                         .type = {.u32 = FW_APP_ROLLBACK_TYPE},        \
                                         .version = {.u32 = 0x00010003 /*v0.1.3*/}}},  \
         .boot_app = {.startup_addr = BOOTLOADER_FACTORY_ADDR,                         \

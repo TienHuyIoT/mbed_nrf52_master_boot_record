@@ -5,21 +5,21 @@ Internal memory layout
 |                   |
 |    Application    |
 | (is main program) |   MAIN_APPLICATION_REGION_SIZE
-|       (652K)      |
+|       (636K)      |
 |                   |
-+-------------------+   (0x5D000)MAIN_APPLICATION_ADDR
++-------------------+   (0x61000)MAIN_APPLICATION_ADDR
 |                   |
 |    Application    |
 | (is a bootloader) |   BOOTLOADER_FACTORY_REGION_SIZE
 |       (300K)      |
 |                   |
-+-------------------+   (0x12000)BOOTLOADER_FACTORY_ADDR
++-------------------+   (0x16000)BOOTLOADER_FACTORY_ADDR
 |      MBR params   |
 |        (8K)       |   MASTER_BOOT_PARAMS_REGION_SIZE
-+-------------------+   MASTER_BOOT_PARAMS_ADDR
++-------------------+   (0x14000)MASTER_BOOT_PARAMS_ADDR
 |                   |
 |        MBR        |
-|       (64K)       |   MASTER_BOOT_RECORD_REGION_SIZE
+|       (80K)       |   MASTER_BOOT_RECORD_REGION_SIZE
 |                   |
 +-------------------+   (0x000000) MASTER_BOOT_RECORD_ADDR
 
@@ -88,10 +88,10 @@ External memory layout
 // <h> Master boot record region
 
 //==========================================================
-// <o> MASTER_BOOT_RECORD_REGION_SIZE (64k)
+// <o> MASTER_BOOT_RECORD_REGION_SIZE (80k)
 
 #ifndef MASTER_BOOT_RECORD_REGION_SIZE
-#define MASTER_BOOT_RECORD_REGION_SIZE (DEVICE_PAGE_ERASE_SIZE * 16)
+#define MASTER_BOOT_RECORD_REGION_SIZE (DEVICE_PAGE_ERASE_SIZE * 20)
 #endif
 
 // <o> MASTER_BOOT_RECORD_ADDR

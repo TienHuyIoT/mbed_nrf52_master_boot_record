@@ -35,6 +35,7 @@ int main()
     MAIN_TAG_CONSOLE("===================================================");
     kx022_cs = 1; /* unselect spi bus kx022 */
 
+    // partition_mng.begin();
     // partition_mng.verifyMain();
     // partition_mng.backupMain();
     // partition_mng.verifyMainRollback();
@@ -78,22 +79,38 @@ static uint32_t startup_application(void)
             jump_address = partition_mng.appAddress(); /* Default jump address */
             if (MasterBootRecord::MAIN_APPLICATION == typeApp)
             {
+                /* Backup main partition to external flash */
+                MAIN_TAG_CONSOLE("BACKUP_MAIN");
+                partition_mng.backupMain();
+                MAIN_TAG_CONSOLE("UPGRADE_MAIN");
                 if (partition_mng.upgradeMain())
                 {
-                    if (partition_mng.setStartUpModeFromMBR(MasterBootRecord::MAIN_RUN_MODE))
+                    if (partition_mng.setStartUpModeToMBR(MasterBootRecord::MAIN_RUN_MODE))
                     {
                         jump_address = partition_mng.appAddress();
                     }
                 }
+                else
+                {
+                    MAIN_TAG_CONSOLE("UPGRADE_MAIN ERROR");
+                }
             }
             else if (MasterBootRecord::BOOT_APPLICATION == typeApp)
             {
+                /* Backup boot partition to external flash */
+                MAIN_TAG_CONSOLE("BACKUP_BOOT");
+                partition_mng.backupBoot();
+                MAIN_TAG_CONSOLE("UPGRADE_BOOT");
                 if (partition_mng.upgradeBoot())
                 {
-                    if (partition_mng.setStartUpModeFromMBR(MasterBootRecord::BOOT_RUN_MODE))
+                    if (partition_mng.setStartUpModeToMBR(MasterBootRecord::BOOT_RUN_MODE))
                     {
                         jump_address = partition_mng.bootAddress();
                     }
+                }
+                else
+                {
+                    MAIN_TAG_CONSOLE("UPGRADE_BOOT ERROR");
                 }
             }
             else
@@ -101,6 +118,10 @@ static uint32_t startup_application(void)
                 /* todo */
             }
             break;
+        }
+        else
+        {
+            MAIN_TAG_CONSOLE("UPGRADE_MODE ERROR");
         }
         // break;
         /* if the upgrade failure, then main run */
@@ -111,15 +132,22 @@ static uint32_t startup_application(void)
             jump_address = partition_mng.appAddress();
             break;
         }
+        else
+        {
+            MAIN_TAG_CONSOLE("MAIN_RUN_MODE ERROR");
+        }
         // break;
         /* if the main application failure, then rollback main application */
     case MasterBootRecord::MAIN_ROLLBACK_MODE:
         MAIN_TAG_CONSOLE("MAIN_ROLLBACK_MODE");
-        if (partition_mng.verifyMainRollback())
+        if (partition_mng.restoreMain())
         {
-            partition_mng.restoreMain();
             jump_address = partition_mng.appAddress();
             break;
+        }
+        else
+        {
+            MAIN_TAG_CONSOLE("MAIN_ROLLBACK_MODE ERROR");
         }
         // break;
         /* if the main rollback failure, then bootloader run */
@@ -130,17 +158,24 @@ static uint32_t startup_application(void)
             jump_address = partition_mng.bootAddress();
             break;
         }
+        else
+        {
+            MAIN_TAG_CONSOLE("BOOT_RUN_MODE ERROR");
+        }
         // break;
         /* if the boot application failure, then rollback boot application */
     case MasterBootRecord::BOOT_ROLLBACK_MODE:
         MAIN_TAG_CONSOLE("BOOT_ROLLBACK_MODE");
-        if (partition_mng.verifyBootRollback())
+        if (partition_mng.restoreBoot())
         {
-            partition_mng.restoreBoot();
             jump_address = partition_mng.bootAddress();
             break;
         }
-        break;
+        else
+        {
+            MAIN_TAG_CONSOLE("BOOT_ROLLBACK_MODE ERROR");
+        }
+        // break;
     
     default:
         jump_address = 0;
@@ -151,7 +186,7 @@ static uint32_t startup_application(void)
     {
         if (MasterBootRecord::MAIN_RUN_MODE != startupMode)
         {
-            partition_mng.setStartUpModeFromMBR(MasterBootRecord::MAIN_RUN_MODE);
+            partition_mng.setStartUpModeToMBR(MasterBootRecord::MAIN_RUN_MODE);
         }
         MAIN_TAG_CONSOLE("main application 0x%0X", jump_address);
     }
@@ -160,7 +195,7 @@ static uint32_t startup_application(void)
     {
         if (MasterBootRecord::BOOT_RUN_MODE != startupMode)
         {
-            partition_mng.setStartUpModeFromMBR(MasterBootRecord::BOOT_RUN_MODE);
+            partition_mng.setStartUpModeToMBR(MasterBootRecord::BOOT_RUN_MODE);
         }
         MAIN_TAG_CONSOLE("Bootloader application 0x%0X", jump_address);
     }

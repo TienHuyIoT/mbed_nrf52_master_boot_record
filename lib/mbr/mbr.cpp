@@ -184,6 +184,7 @@ void MasterBootRecord::setHardwareVersion(std::string const &hwName)
 
 void MasterBootRecord::printMbrInfo(void)
 {
+#if (1)
     if(load() == MBR_OK)
     {
         MBR_TAG_PRINTF("MBR information");
@@ -250,6 +251,7 @@ void MasterBootRecord::printMbrInfo(void)
     {
         MBR_TAG_PRINTF("MBR information load ERROR");
     }
+#endif
 }
 
 std::string MasterBootRecord::readableSize(float bytes) {

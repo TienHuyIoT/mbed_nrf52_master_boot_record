@@ -39,7 +39,7 @@ public:
     bool backupMain(void);
     bool backupBoot(void);
     MasterBootRecord::startup_mode_t getStartUpModeFromMBR(void);
-    bool setStartUpModeFromMBR(MasterBootRecord::startup_mode_t mode);
+    bool setStartUpModeToMBR(MasterBootRecord::startup_mode_t mode);
     uint32_t appAddress(void);
     uint32_t bootAddress(void);
 
