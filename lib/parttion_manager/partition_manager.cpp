@@ -43,6 +43,41 @@ void partition_manager::end(void)
     _spiDevice->deinit();
 }
 
+MasterBootRecord::startup_mode_t partition_manager::getStartUpModeFromMBR(void)
+{
+    return _mbr.getStartUpMode();
+}
+
+/* return true if succeed */
+bool partition_manager::setStartUpModeFromMBR(MasterBootRecord::startup_mode_t mode)
+{
+    PARTITION_MNG_TAG_PRINTF("[setStartUpModeFromMBR]");
+    _mbr.setStartUpMode(mode);
+    return (_mbr.commit() == MasterBootRecord::MBR_OK);
+}
+
+uint32_t partition_manager::appAddress(void)
+{
+    app_info_t app;
+    uint32_t addr;
+
+    app = _mbr.getMainParams();
+    addr = app.startup_addr;
+    PARTITION_MNG_TAG_PRINTF("[appAddress] 0x%X (%u)", addr, addr);
+    return addr;
+}
+
+uint32_t partition_manager::bootAddress(void)
+{
+    app_info_t app;
+    uint32_t addr;
+    
+    app = _mbr.getBootParams();
+    addr = app.startup_addr;
+    PARTITION_MNG_TAG_PRINTF("[bootAddress] 0x%X (%u)", addr, addr);
+    return addr;
+}
+
 void partition_manager::printPartition(void)
 {
 #if (0)
@@ -142,6 +177,7 @@ bool partition_manager::verifyBoot(void)
     PARTITION_MNG_TAG_PRINTF("[verifyBoot]<< finish, status %s", status ? "OK":"Fail");
     return status;
 }
+
 bool partition_manager::verifyMainRollback(void)
 {
     app_info_t app;
@@ -152,6 +188,7 @@ bool partition_manager::verifyMainRollback(void)
     PARTITION_MNG_TAG_PRINTF("[verifyMainRollback]<< finish, status %s", status ? "OK":"Fail");
     return status;
 }
+
 bool partition_manager::verifyBootRollback(void)
 {
     app_info_t app;
@@ -162,6 +199,7 @@ bool partition_manager::verifyBootRollback(void)
     PARTITION_MNG_TAG_PRINTF("[verifyBootRollback]<< finish, status %s", status ? "OK":"Fail");
     return status;
 }
+
 bool partition_manager::verifyImageDownload(void)
 {
     app_info_t app;
@@ -172,8 +210,116 @@ bool partition_manager::verifyImageDownload(void)
     PARTITION_MNG_TAG_PRINTF("[verifyImageDownload]<< finish, status %s", status ? "OK":"Fail");
     return status;
 }
-bool partition_manager::upgradeMain(void) {return true;}
-bool partition_manager::upgradeBoot(void) {return true;}
+
+uint8_t partition_manager::appUpgrade(void)
+{
+    app_info_t app;
+    uint8_t type_app;
+    app = _mbr.getImageDownloadParams();
+    type_app = app.fw_header.type.app;
+    PARTITION_MNG_TAG_PRINTF("[appUpgrade] %s", type_app ? "Main" : "Boot");
+    return type_app;
+}
+
+bool partition_manager::upgradeMain(void)
+{
+    app_info_t des;
+    app_info_t src;
+    MasterBootRecord::dfu_mode_t dfu_mode;
+    bool status_isOK = true;
+    PARTITION_MNG_TAG_PRINTF("[upgradeMain]>> start");
+    des = _mbr.getMainParams();
+    src = _mbr.getImageDownloadParams();
+    dfu_mode = _mbr.getDfuMode();
+
+    PARTITION_MNG_TAG_PRINTF("[upgradeMain]>\t Main version 0x%X", des.fw_header.version.u32);
+    PARTITION_MNG_TAG_PRINTF("[upgradeMain]>\t New version 0x%X", src.fw_header.version.u32);
+    if (MasterBootRecord::UPGRADE_MODE_UP == dfu_mode)
+    {
+        if (des.fw_header.version.u32 > src.fw_header.version.u32)
+        {
+            PARTITION_MNG_TAG_PRINTF("\t Prevent upgrade !");
+            return false;
+        }
+    }
+
+    if (programApp(&des, &src))
+    {
+        des.fw_header.size = src.fw_header.size;
+        des.fw_header.version.u32 = src.fw_header.version.u32;
+        PARTITION_MNG_TAG_PRINTF("[upgradeMain] update des crc32");
+        des.fw_header.checksum = CRC32(&des);
+        PARTITION_MNG_TAG_PRINTF("[upgradeMain] update des into MBR");
+        _mbr.setMainParams(&des);
+        if(_mbr.commit() == MasterBootRecord::MBR_OK)
+        {
+            PARTITION_MNG_TAG_PRINTF("[upgradeMain]\t succeed!");
+            status_isOK = true;
+        }
+        else
+        {
+            PARTITION_MNG_TAG_PRINTF("[upgradeMain]\t failure!");
+            status_isOK = false;
+        }
+    }
+    else
+    {
+        PARTITION_MNG_TAG_PRINTF("[upgradeMain]\t failure!");
+        status_isOK = false;
+    }
+    PARTITION_MNG_TAG_PRINTF("[upgradeMain]<< finish");
+    return status_isOK;
+}
+
+bool partition_manager::upgradeBoot(void)
+{
+    app_info_t des;
+    app_info_t src;
+    MasterBootRecord::dfu_mode_t dfu_mode;
+    bool status_isOK = true;
+    PARTITION_MNG_TAG_PRINTF("[upgradeBoot]>> start");
+    des = _mbr.getBootParams();
+    src = _mbr.getImageDownloadParams();
+    dfu_mode = _mbr.getDfuMode();
+
+    PARTITION_MNG_TAG_PRINTF("[upgradeBoot]>\t Main version 0x%X", des.fw_header.version.u32);
+    PARTITION_MNG_TAG_PRINTF("[upgradeBoot]>\t New version 0x%X", src.fw_header.version.u32);
+    if (MasterBootRecord::UPGRADE_MODE_UP == dfu_mode)
+    {
+        if (des.fw_header.version.u32 > src.fw_header.version.u32)
+        {
+            PARTITION_MNG_TAG_PRINTF("\t Prevent upgrade !");
+            return false;
+        }
+    }
+
+    if (programApp(&des, &src))
+    {
+        des.fw_header.size = src.fw_header.size;
+        des.fw_header.version.u32 = src.fw_header.version.u32;
+        PARTITION_MNG_TAG_PRINTF("[upgradeBoot] update des crc32");
+        des.fw_header.checksum = CRC32(&des);
+        PARTITION_MNG_TAG_PRINTF("[upgradeBoot] update des into MBR");
+        _mbr.setBootParams(&des);
+        if(_mbr.commit() == MasterBootRecord::MBR_OK)
+        {
+            PARTITION_MNG_TAG_PRINTF("[upgradeBoot]\t succeed!");
+        }
+        else
+        {
+            PARTITION_MNG_TAG_PRINTF("[upgradeBoot]\t failure!");
+            status_isOK = false;
+        }
+    }
+    else
+    {
+        PARTITION_MNG_TAG_PRINTF("[upgradeBoot]\t failure!");
+        status_isOK = false;
+    }
+    PARTITION_MNG_TAG_PRINTF("[upgradeBoot]<< finish");
+    return status_isOK;
+}
+
 bool partition_manager::restoreMain(void)
 {
     app_info_t des;
@@ -208,7 +354,42 @@ bool partition_manager::restoreMain(void)
     PARTITION_MNG_TAG_PRINTF("[restoreMain]<< finish");
     return status_isOK;
 }
-bool partition_manager::restoreBoot(void) {return true;}
+
+bool partition_manager::restoreBoot(void)
+{
+    app_info_t des;
+    app_info_t src;
+    bool status_isOK = true;
+    PARTITION_MNG_TAG_PRINTF("[restoreBoot]>> start");
+    des = _mbr.getBootParams();
+    src = _mbr.getBootRollbackParams();
+    if (programApp(&des, &src))
+    {
+        des.fw_header.size = src.fw_header.size;
+        des.fw_header.version.u32 = src.fw_header.version.u32;
+        PARTITION_MNG_TAG_PRINTF("[restoreBoot] update des crc32");
+        des.fw_header.checksum = CRC32(&des);
+        PARTITION_MNG_TAG_PRINTF("[restoreBoot] update des into MBR");
+        _mbr.setBootParams(&des);
+        if(_mbr.commit() == MasterBootRecord::MBR_OK)
+        {
+            PARTITION_MNG_TAG_PRINTF("[restoreBoot]\t succeed!");
+        }
+        else
+        {
+            PARTITION_MNG_TAG_PRINTF("[restoreBoot]\t failure!");
+            status_isOK = false;
+        }
+    }
+    else
+    {
+        PARTITION_MNG_TAG_PRINTF("[restoreBoot]\t failure!");
+        status_isOK = false;
+    }
+    PARTITION_MNG_TAG_PRINTF("[restoreBoot]<< finish");
+    return status_isOK;
+}
+
 bool partition_manager::backupMain(void)
 {
     app_info_t des;
@@ -243,13 +424,47 @@ bool partition_manager::backupMain(void)
     PARTITION_MNG_TAG_PRINTF("[backupMain]<< finish");
     return status_isOK;
 }
-bool partition_manager::backupBoot(void) {return true;}
+
+bool partition_manager::backupBoot(void)
+{
+    app_info_t des;
+    app_info_t src;
+    bool status_isOK = true;
+    PARTITION_MNG_TAG_PRINTF("[backupBoot]>> start");
+    des = _mbr.getBootRollbackParams();
+    src = _mbr.getBootParams();
+    if (backupApp(&des, &src))
+    {
+        des.fw_header.size = src.fw_header.size;
+        des.fw_header.version.u32 = src.fw_header.version.u32;
+        PARTITION_MNG_TAG_PRINTF("[backupBoot] update des crc32");
+        des.fw_header.checksum = CRC32(&des);
+        PARTITION_MNG_TAG_PRINTF("[backupBoot] update MBR");
+        _mbr.setBootRollbackParams(&des);
+        if(_mbr.commit() == MasterBootRecord::MBR_OK)
+        {
+            PARTITION_MNG_TAG_PRINTF("[backupBoot]\t succeed!");
+        }
+        else
+        {
+            PARTITION_MNG_TAG_PRINTF("[backupBoot]\t failure!");
+            status_isOK = false;
+        }
+    }
+    else
+    {
+        PARTITION_MNG_TAG_PRINTF("[backupBoot]\t failure!");
+        status_isOK = false;
+    }
+    PARTITION_MNG_TAG_PRINTF("[backupBoot]<< finish");
+    return status_isOK;
+}
 
 bool partition_manager::programApp(app_info_t* des, app_info_t* src)
 {
     FlashSPIBlockDevice* srcFlash;
     FlashIAPBlockDevice* desFlash;
-    uint32_t addr, offset;
+    uint32_t addr;
     uint32_t remain_size;
     uint32_t read_size;
     uint32_t block_size;
@@ -305,28 +520,14 @@ bool partition_manager::programApp(app_info_t* des, app_info_t* src)
     {
         PARTITION_MNG_TAG_PRINTF("[programApp]\t processing decrypt image");
         decrypt_image = true;
-        offset = 0;
-    }
-    else if (MasterBootRecord::DATA_HEADER_AND_ENC == src->fw_header.type.enc)
-    {
-        PARTITION_MNG_TAG_PRINTF("[programApp]\t processing decrypt image");
-        decrypt_image = true;
-        offset = sizeof(firmwareHeader_t);
-    }
-    else if (MasterBootRecord::DATA_HEADER_AND_RAW == src->fw_header.type.enc)
-    {
-        PARTITION_MNG_TAG_PRINTF("[programApp]\t processing decrypt image");
-        decrypt_image = false;
-        offset = sizeof(firmwareHeader_t);
     }
     else
     {
         PARTITION_MNG_TAG_PRINTF("[programApp]\t processing image");
         decrypt_image = false;
-        offset = 0;
     }
 
-    remain_size = src->fw_header.size - offset;
+    remain_size = src->fw_header.size;
     addr = 0;
     while (remain_size)
     {
@@ -339,21 +540,23 @@ bool partition_manager::programApp(app_info_t* des, app_info_t* src)
             read_size = remain_size;
         }
         desFlash->erase(addr, block_size);
-        srcFlash->read(ptr_data, addr + offset, read_size);
+        srcFlash->read(ptr_data, addr, read_size);
         if (decrypt_image)
         {
             /* Decrypt data before write to des partition */
             aesDecrypt(ptr_data, read_size);
         }
-        crc = Crc32_CalculateBuffer(ptr_data, read_size);
         desFlash->program(ptr_data, addr, read_size);
+#if defined(PARTITION_MANAGER_WRITE_READ_CRC32) && (PARTITION_MANAGER_WRITE_READ_CRC32 == 1)
+        crc = Crc32_CalculateBuffer(ptr_data, read_size);
         desFlash->read(ptr_data, addr, read_size);
         if (crc != Crc32_CalculateBuffer(ptr_data, read_size))
         {
             status_isOK = false;
-            PARTITION_MNG_TAG_PRINTF("[programApp]\t crc32(%08X) fail!", crc);
+            PARTITION_MNG_TAG_PRINTF("[programApp]\t crc32=0x%08X fail!", crc);
             break;
         }
+#endif
         addr += read_size;
         remain_size -= read_size;
         PARTITION_MNG_TAG_PRINTF("[programApp]\t %u, %08X, %u%%", read_size, crc, addr * 100 / src->fw_header.size);
@@ -458,15 +661,17 @@ bool partition_manager::backupApp(app_info_t* des, app_info_t* src)
         {
             aesEncrypt(ptr_data, read_size);
         }
-        crc = Crc32_CalculateBuffer(ptr_data, read_size);
         desFlash->program(ptr_data, addr, read_size);
+#if defined(PARTITION_MANAGER_WRITE_READ_CRC32) && (PARTITION_MANAGER_WRITE_READ_CRC32 == 1)
+        crc = Crc32_CalculateBuffer(ptr_data, read_size);
         desFlash->read(ptr_data, addr, read_size);
         if (crc != Crc32_CalculateBuffer(ptr_data, read_size))
         {
             status_isOK = false;
-            PARTITION_MNG_TAG_PRINTF("[backupApp]\t crc32(%08X) fail!", crc);
+            PARTITION_MNG_TAG_PRINTF("[backupApp]\t crc32=0x%08X fail!", crc);
             break;
         }
+#endif
         addr += read_size;
         remain_size -= read_size;
         PARTITION_MNG_TAG_PRINTF("[backupApp]\t %u, %08X, %u%%", read_size, crc, addr * 100 / src->fw_header.size);
@@ -496,12 +701,12 @@ bool partition_manager::verify(app_info_t* app)
   if(crc == app->fw_header.checksum)
   {
     result = true;
-    PARTITION_MNG_TAG_PRINTF("[verify]\t crc(%X) App OK", crc);
+    PARTITION_MNG_TAG_PRINTF("[verify]\t crc=0x%X App OK", crc);
   }
   else
   {
     result = false;
-    PARTITION_MNG_TAG_PRINTF("[verify] error crc=%X, expected crc=%X", crc, app->fw_header.checksum);
+    PARTITION_MNG_TAG_PRINTF("[verify] error crc=0x%X, expected crc=0x%X", crc, app->fw_header.checksum);
     PARTITION_MNG_TAG_PRINTF("[verify]\t App Fail");
   }
   PARTITION_MNG_TAG_PRINTF("[verify]<< finish");
@@ -571,7 +776,6 @@ uint32_t partition_manager::CRC32(app_info_t* app)
             }
 
             spiFlash->read(ptr_data, addr, read_size);
-            // aesDecrypt(ptr_data, read_size);
             CRC32_Accumulate((uint8_t *) ptr_data, read_size);
             addr += read_size;
             remain_size -= read_size;
@@ -583,7 +787,7 @@ uint32_t partition_manager::CRC32(app_info_t* app)
     }
     crc = CRC32_Get();
     
-    PARTITION_MNG_TAG_PRINTF("[CRC32]\t %08X", crc);
+    PARTITION_MNG_TAG_PRINTF("[CRC32]\t 0x%08X", crc);
     PARTITION_MNG_TAG_PRINTF("[CRC32]<< finish");
     return crc;
 } // fwl_header_crc32

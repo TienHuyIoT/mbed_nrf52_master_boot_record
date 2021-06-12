@@ -22,26 +22,150 @@
 const PinMapSPI PinMap_SPI[1] = {
     {FSPI_MOSI_PIN, FSPI_MISO_PIN, FSPI_CLK_PIN, 0}};
 /* Init SPI Block Device */
-SPIFBlockDevice spiFlash(FSPI_MOSI_PIN, FSPI_MISO_PIN, FSPI_CLK_PIN, FSPI_CS_PIN);
-partition_manager partition_mng(&spiFlash);
+SPIFBlockDevice spiFlashDevice(FSPI_MOSI_PIN, FSPI_MISO_PIN, FSPI_CLK_PIN, FSPI_CS_PIN);
+partition_manager partition_mng(&spiFlashDevice);
 
 DigitalOut kx022_cs(KX022_CS_PIN);
+
+static uint32_t startup_application(void);
 
 int main()
 {
     MAIN_CONSOLE("\r\n\r\n");
     MAIN_TAG_CONSOLE("===================================================");
-
     kx022_cs = 1; /* unselect spi bus kx022 */
 
-    partition_mng.begin();
     // partition_mng.verifyMain();
     // partition_mng.backupMain();
     // partition_mng.verifyMainRollback();
-    partition_mng.restoreMain();
-    partition_mng.end();
+    // partition_mng.restoreMain();
+    // partition_mng.end();
     // while(1) {};
 
-    MAIN_TAG_CONSOLE("Starting application 0x%0X", MAIN_APPLICATION_ADDR);
-    mbed_start_application(MAIN_APPLICATION_ADDR);
+    uint32_t jump_address = startup_application();
+    if (jump_address != 0)
+    {
+        MAIN_TAG_CONSOLE("Starting application 0x%0X", jump_address);
+        mbed_start_application(jump_address);
+    }
+    else
+    {
+        while(1)
+        {
+            MAIN_TAG_CONSOLE("None application");
+            ThisThread::sleep_for(10000ms);
+        }
+    }
+}
+
+static uint32_t startup_application(void)
+{
+    MasterBootRecord::startup_mode_t startupMode;
+    uint32_t jump_address;
+
+    partition_mng.begin();
+
+    startupMode = partition_mng.getStartUpModeFromMBR();
+    MAIN_TAG_CONSOLE("Startup Mode %u", startupMode);
+    switch (startupMode)
+    {
+    case MasterBootRecord::UPGRADE_MODE:
+        MAIN_TAG_CONSOLE("UPGRADE_MODE");
+        if (partition_mng.verifyImageDownload())
+        {
+            MasterBootRecord::header_application_t typeApp;
+            typeApp = (MasterBootRecord::header_application_t)partition_mng.appUpgrade();
+            jump_address = partition_mng.appAddress(); /* Default jump address */
+            if (MasterBootRecord::MAIN_APPLICATION == typeApp)
+            {
+                if (partition_mng.upgradeMain())
+                {
+                    if (partition_mng.setStartUpModeFromMBR(MasterBootRecord::MAIN_RUN_MODE))
+                    {
+                        jump_address = partition_mng.appAddress();
+                    }
+                }
+            }
+            else if (MasterBootRecord::BOOT_APPLICATION == typeApp)
+            {
+                if (partition_mng.upgradeBoot())
+                {
+                    if (partition_mng.setStartUpModeFromMBR(MasterBootRecord::BOOT_RUN_MODE))
+                    {
+                        jump_address = partition_mng.bootAddress();
+                    }
+                }
+            }
+            else
+            {
+                /* todo */
+            }
+            break;
+        }
+        // break;
+        /* if the upgrade failure, then main run */
+    case MasterBootRecord::MAIN_RUN_MODE:
+        MAIN_TAG_CONSOLE("MAIN_RUN_MODE");
+        if (partition_mng.verifyMain())
+        {
+            jump_address = partition_mng.appAddress();
+            break;
+        }
+        // break;
+        /* if the main application failure, then rollback main application */
+    case MasterBootRecord::MAIN_ROLLBACK_MODE:
+        MAIN_TAG_CONSOLE("MAIN_ROLLBACK_MODE");
+        if (partition_mng.verifyMainRollback())
+        {
+            partition_mng.restoreMain();
+            jump_address = partition_mng.appAddress();
+            break;
+        }
+        // break;
+        /* if the main rollback failure, then bootloader run */
+    case MasterBootRecord::BOOT_RUN_MODE:
+        MAIN_TAG_CONSOLE("BOOT_RUN_MODE");
+        if (partition_mng.verifyBoot())
+        {
+            jump_address = partition_mng.bootAddress();
+            break;
+        }
+        // break;
+        /* if the boot application failure, then rollback boot application */
+    case MasterBootRecord::BOOT_ROLLBACK_MODE:
+        MAIN_TAG_CONSOLE("BOOT_ROLLBACK_MODE");
+        if (partition_mng.verifyBootRollback())
+        {
+            partition_mng.restoreBoot();
+            jump_address = partition_mng.bootAddress();
+            break;
+        }
+        break;
+    
+    default:
+        jump_address = 0;
+        break;
+    }
+
+    if (partition_mng.appAddress() == jump_address)
+    {
+        if (MasterBootRecord::MAIN_RUN_MODE != startupMode)
+        {
+            partition_mng.setStartUpModeFromMBR(MasterBootRecord::MAIN_RUN_MODE);
+        }
+        MAIN_TAG_CONSOLE("main application 0x%0X", jump_address);
+    }
+
+    if (partition_mng.bootAddress() == jump_address)
+    {
+        if (MasterBootRecord::BOOT_RUN_MODE != startupMode)
+        {
+            partition_mng.setStartUpModeFromMBR(MasterBootRecord::BOOT_RUN_MODE);
+        }
+        MAIN_TAG_CONSOLE("Bootloader application 0x%0X", jump_address);
+    }
+
+    partition_mng.end();
+
+    return jump_address;
 }

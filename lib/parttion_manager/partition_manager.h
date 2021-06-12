@@ -16,6 +16,7 @@
 #define PARTITION_MNG_TAG_PRINTF(...) CONSOLE_TAG_LOGI("[PARTITION_MNG]", __VA_ARGS__)
 
 /* Private defines -----------------------------------------------------------*/
+#define PARTITION_MANAGER_WRITE_READ_CRC32 1
 
 class partition_manager
 {
@@ -30,12 +31,17 @@ public:
     bool verifyMainRollback(void);
     bool verifyBootRollback(void);
     bool verifyImageDownload(void);
+    uint8_t appUpgrade(void);
     bool upgradeMain(void);
     bool upgradeBoot(void);
     bool restoreMain(void);
     bool restoreBoot(void);
     bool backupMain(void);
     bool backupBoot(void);
+    MasterBootRecord::startup_mode_t getStartUpModeFromMBR(void);
+    bool setStartUpModeFromMBR(MasterBootRecord::startup_mode_t mode);
+    uint32_t appAddress(void);
+    uint32_t bootAddress(void);
 
 private:
     SPIFBlockDevice* _spiDevice;

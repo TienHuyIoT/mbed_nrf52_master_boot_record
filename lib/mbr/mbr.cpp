@@ -71,9 +71,12 @@ MasterBootRecord::mbr_status_t MasterBootRecord::setDefault(void)
     mbr_info_t mbr_default = MBR_INFO_DEFAULT;
     mbr_default.main_app.common.app_status = APP_STATUS_OK;
     mbr_default.main_rollback.common.app_status = APP_STATUS_NONE;
+
     mbr_default.boot_app.common.app_status = APP_STATUS_OK;
     mbr_default.boot_rollback.common.app_status = APP_STATUS_NONE;
+
     mbr_default.image_download.common.app_status = APP_STATUS_NONE;
+    
     mbr_default.common.startup_mode = MAIN_RUN_MODE;
     mbr_default.common.dfu_mode = UPGRADE_MODE_ANY;
     

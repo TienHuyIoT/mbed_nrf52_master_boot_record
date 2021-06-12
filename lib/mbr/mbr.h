@@ -33,7 +33,7 @@
 /* 55(signal)-00(boot)-01(encrypt image)-01(external) */
 #define FW_BOOT_ROLLBACK_TYPE 0x55000101
 /* 55(signal)-00/01(boot/app)-01(encrypt image)-01(external) */
-#define FW_IMAGE_DOWNLOAD_TYPE 0x55010301
+#define FW_IMAGE_DOWNLOAD_TYPE 0x55010101
 
 #define MBR_INFO_DEFAULT                                                              \
     {                                                                                 \
@@ -63,7 +63,7 @@
                                         .version = {.u32 = 0x00010003 /*v0.1.3*/}}},  \
         .image_download = {.startup_addr = IMAGE_DOWNLOAD_ADDR,                       \
                            .max_size = IMAGE_DOWNLOAD_REGION_SIZE,                    \
-                           .fw_header = {.checksum = MBR_CRC_APP_NONE,                \
+                           .fw_header = {.checksum = 0xE797D257,                \
                                          .size = 341776,                              \
                                          .type = {.u32 = FW_IMAGE_DOWNLOAD_TYPE},     \
                                          .version = {.u32 = 0x00010003 /*v0.1.3*/}}}, \
@@ -84,15 +84,18 @@ typedef struct __attribute__((packed, aligned(4)))
         uint32_t u32;
         struct
         {
-            uint8_t mem;    /* 0. internal
+            uint8_t mem;    /* refer header_memory_t
+                            0. internal
                             1. external;
                             */
-            uint8_t enc;    /* 0. image raw; 
+            uint8_t enc;    /* refer header_encrypt_t
+                            0. image raw; 
                             1. image encrypt;
                             2. Header + image raw (image download option);
                             3. (Header + image raw) encrypt (image download option);
                             */
-            uint8_t app;    /* 0. Boot
+            uint8_t app;    /* refer header_application_t 
+                            0. Boot
                             1. App;
                             */
             uint8_t signal; /* alway 0x55 */
@@ -188,8 +191,8 @@ public:
     {
         DATA_RAW = 0,
         DATA_ENC,
-        DATA_HEADER_AND_RAW,
-        DATA_HEADER_AND_ENC
+        DATA_HEADER_AND_RAW, /* reserve */
+        DATA_HEADER_AND_ENC  /* reserve */
     } header_encrypt_t;
 
     typedef enum
