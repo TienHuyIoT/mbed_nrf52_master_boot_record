@@ -32,12 +32,13 @@ static uint32_t startup_application(void);
 int main()
 {
     MAIN_CONSOLE("\r\n\r\n");
-    MAIN_TAG_CONSOLE("===================================================");
+    MAIN_TAG_CONSOLE("======================MBR======================");
     kx022_cs = 1; /* unselect spi bus kx022 */
 
     // partition_mng.begin();
     // partition_mng.verifyMain();
     // partition_mng.backupMain();
+    // partition_mng.backupMain2ImageDownload();
     // partition_mng.verifyMainRollback();
     // partition_mng.restoreMain();
     // partition_mng.end();
@@ -71,7 +72,7 @@ static uint32_t startup_application(void)
     switch (startupMode)
     {
     case MasterBootRecord::UPGRADE_MODE:
-        MAIN_TAG_CONSOLE("UPGRADE_MODE");
+        MAIN_TAG_CONSOLE("===================== UPGRADE_MODE =====================");
         if (partition_mng.verifyImageDownload())
         {
             MasterBootRecord::header_application_t typeApp;
@@ -80,9 +81,9 @@ static uint32_t startup_application(void)
             if (MasterBootRecord::MAIN_APPLICATION == typeApp)
             {
                 /* Backup main partition to external flash */
-                MAIN_TAG_CONSOLE("BACKUP_MAIN");
+                MAIN_TAG_CONSOLE("===================== BACKUP_MAIN =====================");
                 partition_mng.backupMain();
-                MAIN_TAG_CONSOLE("UPGRADE_MAIN");
+                MAIN_TAG_CONSOLE("===================== UPGRADE_MAIN ====================");
                 if (partition_mng.upgradeMain())
                 {
                     if (partition_mng.setStartUpModeToMBR(MasterBootRecord::MAIN_RUN_MODE))
@@ -98,9 +99,9 @@ static uint32_t startup_application(void)
             else if (MasterBootRecord::BOOT_APPLICATION == typeApp)
             {
                 /* Backup boot partition to external flash */
-                MAIN_TAG_CONSOLE("BACKUP_BOOT");
+                MAIN_TAG_CONSOLE("===================== BACKUP_BOOT =====================");
                 partition_mng.backupBoot();
-                MAIN_TAG_CONSOLE("UPGRADE_BOOT");
+                MAIN_TAG_CONSOLE("===================== UPGRADE_BOOT ====================");
                 if (partition_mng.upgradeBoot())
                 {
                     if (partition_mng.setStartUpModeToMBR(MasterBootRecord::BOOT_RUN_MODE))
@@ -126,7 +127,7 @@ static uint32_t startup_application(void)
         // break;
         /* if the upgrade failure, then main run */
     case MasterBootRecord::MAIN_RUN_MODE:
-        MAIN_TAG_CONSOLE("MAIN_RUN_MODE");
+        MAIN_TAG_CONSOLE("===================== MAIN_RUN_MODE =====================");
         if (partition_mng.verifyMain())
         {
             jump_address = partition_mng.appAddress();
@@ -139,7 +140,7 @@ static uint32_t startup_application(void)
         // break;
         /* if the main application failure, then rollback main application */
     case MasterBootRecord::MAIN_ROLLBACK_MODE:
-        MAIN_TAG_CONSOLE("MAIN_ROLLBACK_MODE");
+        MAIN_TAG_CONSOLE("=================== MAIN_ROLLBACK_MODE ==================");
         if (partition_mng.restoreMain())
         {
             jump_address = partition_mng.appAddress();
@@ -152,7 +153,7 @@ static uint32_t startup_application(void)
         // break;
         /* if the main rollback failure, then bootloader run */
     case MasterBootRecord::BOOT_RUN_MODE:
-        MAIN_TAG_CONSOLE("BOOT_RUN_MODE");
+        MAIN_TAG_CONSOLE("===================== BOOT_RUN_MODE =====================");
         if (partition_mng.verifyBoot())
         {
             jump_address = partition_mng.bootAddress();
@@ -165,7 +166,7 @@ static uint32_t startup_application(void)
         // break;
         /* if the boot application failure, then rollback boot application */
     case MasterBootRecord::BOOT_ROLLBACK_MODE:
-        MAIN_TAG_CONSOLE("BOOT_ROLLBACK_MODE");
+        MAIN_TAG_CONSOLE("=================== BOOT_ROLLBACK_MODE ==================");
         if (partition_mng.restoreBoot())
         {
             jump_address = partition_mng.bootAddress();

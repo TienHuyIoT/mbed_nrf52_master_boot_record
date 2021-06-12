@@ -38,6 +38,7 @@ public:
     bool restoreBoot(void);
     bool backupMain(void);
     bool backupBoot(void);
+    bool backupMain2ImageDownload(void);
     MasterBootRecord::startup_mode_t getStartUpModeFromMBR(void);
     bool setStartUpModeToMBR(MasterBootRecord::startup_mode_t mode);
     uint32_t appAddress(void);

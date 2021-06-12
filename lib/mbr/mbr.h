@@ -63,8 +63,8 @@
                                         .version = {.u32 = 0x00010003 /*v0.1.3*/}}},  \
         .image_download = {.startup_addr = IMAGE_DOWNLOAD_ADDR,                       \
                            .max_size = IMAGE_DOWNLOAD_REGION_SIZE,                    \
-                           .fw_header = {.checksum = 0xE797D257,                \
-                                         .size = 341776,                              \
+                           .fw_header = {.checksum = 0xCACBA276,                \
+                                         .size = 341816,                              \
                                          .type = {.u32 = FW_IMAGE_DOWNLOAD_TYPE},     \
                                          .version = {.u32 = 0x00010003 /*v0.1.3*/}}}, \
         .dfu_num = 0,                                                                 \

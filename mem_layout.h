@@ -36,11 +36,11 @@ External memory layout
 |   Image download  |
 |        (1M)       |   IMAGE_DOWNLOAD_REGION_SIZE
 |                   |
-+-------------------+   (0xEE000)IMAGE_DOWNLOAD_ADDR
++-------------------+   (0xEA000)IMAGE_DOWNLOAD_ADDR
 |                   |
 |    App rollback   |
 | (is main program) |   MAIN_APPLICATION_ROLLBACK_REGION_SIZE
-|       (652K)      |
+|       (636K)      |
 |                   |
 +-------------------+   (0x4B000)MAIN_APPLICATION_ROLLBACK_ADDR
 |                   |

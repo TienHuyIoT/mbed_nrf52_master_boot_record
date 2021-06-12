@@ -425,6 +425,41 @@ bool partition_manager::backupMain(void)
     return status_isOK;
 }
 
+bool partition_manager::backupMain2ImageDownload(void)
+{
+    app_info_t des;
+    app_info_t src;
+    bool status_isOK = true;
+    PARTITION_MNG_TAG_PRINTF("[backupMain]>> start");
+    des = _mbr.getImageDownloadParams();
+    src = _mbr.getMainParams();
+    if (backupApp(&des, &src))
+    {
+        des.fw_header.size = src.fw_header.size;
+        des.fw_header.version.u32 = src.fw_header.version.u32;
+        PARTITION_MNG_TAG_PRINTF("[backupMain] update des crc32");
+        des.fw_header.checksum = CRC32(&des);
+        PARTITION_MNG_TAG_PRINTF("[backupMain] update MBR");
+        _mbr.setImageDownloadParams(&des);
+        if(_mbr.commit() == MasterBootRecord::MBR_OK)
+        {
+            PARTITION_MNG_TAG_PRINTF("[backupMain]\t succeed!");
+        }
+        else
+        {
+            PARTITION_MNG_TAG_PRINTF("[backupMain]\t failure!");
+            status_isOK = false;
+        }
+    }
+    else
+    {
+        PARTITION_MNG_TAG_PRINTF("[backupMain]\t failure!");
+        status_isOK = false;
+    }
+    PARTITION_MNG_TAG_PRINTF("[backupMain]<< finish");
+    return status_isOK;
+}
+
 bool partition_manager::backupBoot(void)
 {
     app_info_t des;
