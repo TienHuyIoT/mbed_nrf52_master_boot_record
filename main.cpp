@@ -35,15 +35,15 @@ int main()
     MAIN_TAG_CONSOLE("======================MBR======================");
     kx022_cs = 1; /* unselect spi bus kx022 */
 
-    partition_mng.begin();
+    // partition_mng.begin();
     // partition_mng.verifyMain();
     // partition_mng.backupMain();
     // partition_mng.backupMain2ImageDownload();
-    partition_mng.cloneMain2ImageDownload();
+    // partition_mng.cloneMain2ImageDownload();
     // partition_mng.verifyMainRollback();
     // partition_mng.restoreMain();
-    partition_mng.end();
-    while(1) {};
+    // partition_mng.end();
+    // while(1) {};
 
     uint32_t jump_address = startup_application();
     if (jump_address != 0)
@@ -78,7 +78,7 @@ static uint32_t startup_application(void)
         {
             MasterBootRecord::header_application_t typeApp;
             typeApp = (MasterBootRecord::header_application_t)partition_mng.appUpgrade();
-            jump_address = partition_mng.appAddress(); /* Default jump address */
+            jump_address = partition_mng.mainAddress(); /* Default jump to main address */
             if (MasterBootRecord::MAIN_APPLICATION == typeApp)
             {
                 /* Backup main partition to external flash */
@@ -87,10 +87,7 @@ static uint32_t startup_application(void)
                 MAIN_TAG_CONSOLE("===================== UPGRADE_MAIN ====================");
                 if (partition_mng.upgradeMain())
                 {
-                    if (partition_mng.setStartUpModeToMBR(MasterBootRecord::MAIN_RUN_MODE))
-                    {
-                        jump_address = partition_mng.appAddress();
-                    }
+                    jump_address = partition_mng.mainAddress();
                 }
                 else
                 {
@@ -105,10 +102,7 @@ static uint32_t startup_application(void)
                 MAIN_TAG_CONSOLE("===================== UPGRADE_BOOT ====================");
                 if (partition_mng.upgradeBoot())
                 {
-                    if (partition_mng.setStartUpModeToMBR(MasterBootRecord::BOOT_RUN_MODE))
-                    {
-                        jump_address = partition_mng.bootAddress();
-                    }
+                    jump_address = partition_mng.bootAddress();
                 }
                 else
                 {
@@ -131,7 +125,7 @@ static uint32_t startup_application(void)
         MAIN_TAG_CONSOLE("===================== MAIN_RUN_MODE =====================");
         if (partition_mng.verifyMain())
         {
-            jump_address = partition_mng.appAddress();
+            jump_address = partition_mng.mainAddress();
             break;
         }
         else
@@ -144,7 +138,7 @@ static uint32_t startup_application(void)
         MAIN_TAG_CONSOLE("=================== MAIN_ROLLBACK_MODE ==================");
         if (partition_mng.restoreMain())
         {
-            jump_address = partition_mng.appAddress();
+            jump_address = partition_mng.mainAddress();
             break;
         }
         else
@@ -184,11 +178,18 @@ static uint32_t startup_application(void)
         break;
     }
 
-    if (partition_mng.appAddress() == jump_address)
+    if (partition_mng.mainAddress() == jump_address)
     {
         if (MasterBootRecord::MAIN_RUN_MODE != startupMode)
         {
-            partition_mng.setStartUpModeToMBR(MasterBootRecord::MAIN_RUN_MODE);
+            if (partition_mng.setStartUpModeToMBR(MasterBootRecord::MAIN_RUN_MODE))
+            {
+                MAIN_TAG_CONSOLE("[setStartUpModeToMBR] MAIN_RUN_MODE succeed!");
+            }
+            else
+            {
+                MAIN_TAG_CONSOLE("[setStartUpModeToMBR] MAIN_RUN_MODE failure!");
+            }
         }
         MAIN_TAG_CONSOLE("main application 0x%0X", jump_address);
     }
@@ -197,7 +198,14 @@ static uint32_t startup_application(void)
     {
         if (MasterBootRecord::BOOT_RUN_MODE != startupMode)
         {
-            partition_mng.setStartUpModeToMBR(MasterBootRecord::BOOT_RUN_MODE);
+            if(partition_mng.setStartUpModeToMBR(MasterBootRecord::BOOT_RUN_MODE))
+            {
+                MAIN_TAG_CONSOLE("[setStartUpModeToMBR] BOOT_RUN_MODE succeed!");
+            }
+            else
+            {
+                MAIN_TAG_CONSOLE("[setStartUpModeToMBR] BOOT_RUN_MODE failure!");
+            }
         }
         MAIN_TAG_CONSOLE("Bootloader application 0x%0X", jump_address);
     }

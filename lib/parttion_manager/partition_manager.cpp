@@ -24,6 +24,7 @@ _mbr(),
 aes128()
 {
     _spiDevice = spiDevice;
+    _init_isOK = false;
 }
 
 partition_manager::~partition_manager()
@@ -33,10 +34,98 @@ partition_manager::~partition_manager()
 
 void partition_manager::begin(void)
 {
+    app_info_t app;
+    firmwareHeader_t fw_header;
+    bool mbr_update = false;
+
+    if(_init_isOK)
+    {
+        return;
+    }
+
     _spiDevice->init();  
     _mbr.begin();
+    
+    app = _mbr.getMainParams();
+    if (MBR_CRC_APP_FACTORY == app.fw_header.checksum)
+    {
+        memcpy(&fw_header, (uint8_t*)MAIN_APP_HEADER_LOCATION, sizeof(firmwareHeader_t));
+        PARTITION_MNG_TAG_PRINTF("[begin] Main firmware header at 0x%X", MAIN_APP_HEADER_LOCATION);
+        PARTITION_MNG_TAG_PRINTF("\t checksum: 0x%x", fw_header.checksum);
+        PARTITION_MNG_TAG_PRINTF("\t size: %u(%s)", fw_header.size, readableSize(fw_header.size).c_str());
+        PARTITION_MNG_TAG_PRINTF("\t type: 0x%X", fw_header.type.u32);
+        PARTITION_MNG_TAG_PRINTF("\t version: 0x%X", fw_header.version.u32);
+        if (MBR_CRC_APP_NONE != fw_header.checksum
+        && FW_APP_MAIN_TYPE == fw_header.type.u32)
+        {
+            app.fw_header = fw_header;
+            PARTITION_MNG_TAG_PRINTF("[begin]\t verify Main application");
+            if (verify(&app))
+            {
+                PARTITION_MNG_TAG_PRINTF("[begin]\t Main application OK");
+                PARTITION_MNG_TAG_PRINTF("[begin]\t Update main header MBR\n");
+                _mbr.setMainParams(&app);
+                mbr_update = true;
+            }
+            else
+            {
+                PARTITION_MNG_TAG_PRINTF("[begin]\t Main application ERROR\n");
+            }
+        }
+        else
+        {
+            PARTITION_MNG_TAG_PRINTF("[begin]\t Main application isn't exist\n");
+        }
+    }
+
+    app = _mbr.getBootParams();
+    if (MBR_CRC_APP_FACTORY == app.fw_header.checksum)
+    {
+        memcpy(&fw_header, (uint8_t*)BOOT_APP_HEADER_LOCATION, sizeof(firmwareHeader_t));
+        PARTITION_MNG_TAG_PRINTF("[begin] Boot firmware header at 0x%X", BOOT_APP_HEADER_LOCATION);
+        PARTITION_MNG_TAG_PRINTF("\t checksum: 0x%x", fw_header.checksum);
+        PARTITION_MNG_TAG_PRINTF("\t size: %u(%s)", fw_header.size, readableSize(fw_header.size).c_str());
+        PARTITION_MNG_TAG_PRINTF("\t type: 0x%X", fw_header.type.u32);
+        PARTITION_MNG_TAG_PRINTF("\t version: 0x%X", fw_header.version.u32);
+        if (MBR_CRC_APP_NONE != fw_header.checksum
+        && FW_APP_MAIN_TYPE == fw_header.type.u32)
+        {
+            app.fw_header = fw_header;
+            PARTITION_MNG_TAG_PRINTF("[begin]\t verify Boot application");
+            if (verify(&app))
+            {
+                PARTITION_MNG_TAG_PRINTF("[begin]\t Boot application OK");
+                PARTITION_MNG_TAG_PRINTF("[begin]\t Update boot header MBR");
+                _mbr.setMainParams(&app);
+                mbr_update = true;
+            }
+            else
+            {
+                PARTITION_MNG_TAG_PRINTF("[begin]\t Boot application ERROR\n");
+            }
+        }
+        else
+        {
+            PARTITION_MNG_TAG_PRINTF("[begin]\t Boot application isn't exist\n");
+        }
+    }
+
+    if (mbr_update)
+    {
+        PARTITION_MNG_TAG_PRINTF("[begin]\t store MBR");
+        if(_mbr.commit() == MasterBootRecord::MBR_OK)
+        {
+            PARTITION_MNG_TAG_PRINTF("[begin]\t store MBR succeed!\n");
+        }
+        else
+        {
+            PARTITION_MNG_TAG_PRINTF("[begin]\t store MBR failure!\n");
+        }
+    }
+
     _mbr.printMbrInfo();
     this->printPartition();
+    _init_isOK = true;
 }
 
 void partition_manager::end(void)
@@ -58,14 +147,14 @@ bool partition_manager::setStartUpModeToMBR(MasterBootRecord::startup_mode_t mod
     return (_mbr.commit() == MasterBootRecord::MBR_OK);
 }
 
-uint32_t partition_manager::appAddress(void)
+uint32_t partition_manager::mainAddress(void)
 {
     app_info_t app;
     uint32_t addr;
 
     app = _mbr.getMainParams();
     addr = app.startup_addr;
-    PARTITION_MNG_TAG_PRINTF("[appAddress] 0x%X (%u)", addr, addr);
+    PARTITION_MNG_TAG_PRINTF("[mainAddress] 0x%X (%u)", addr, addr);
     return addr;
 }
 
@@ -253,6 +342,7 @@ bool partition_manager::upgradeMain(void)
         des.fw_header.checksum = CRC32(&des);
         PARTITION_MNG_TAG_PRINTF("[upgradeMain] update des into MBR");
         _mbr.setMainParams(&des);
+        _mbr.setMainDfuNum(_mbr.getMainDfuNum() + 1);
         if(_mbr.commit() == MasterBootRecord::MBR_OK)
         {
             PARTITION_MNG_TAG_PRINTF("[upgradeMain]\t succeed!");
@@ -303,6 +393,7 @@ bool partition_manager::upgradeBoot(void)
         des.fw_header.checksum = CRC32(&des);
         PARTITION_MNG_TAG_PRINTF("[upgradeBoot] update des into MBR");
         _mbr.setBootParams(&des);
+        _mbr.setBootDfuNum(_mbr.getBootDfuNum() + 1);
         if(_mbr.commit() == MasterBootRecord::MBR_OK)
         {
             PARTITION_MNG_TAG_PRINTF("[upgradeBoot]\t succeed!");
@@ -591,6 +682,8 @@ bool partition_manager::programApp(app_info_t* des, app_info_t* src)
     {
         PARTITION_MNG_TAG_PRINTF("[programApp]\t processing decrypt image");
         decrypt_image = true;
+        AES128_crypto_t mbr_aes = _mbr.getAes128Params();
+        aes128.setup((const char*)mbr_aes.key, AES::KEY_128, AES::MODE_CBC, (const char*)mbr_aes.iv);
     }
     else
     {
@@ -615,7 +708,7 @@ bool partition_manager::programApp(app_info_t* des, app_info_t* src)
         if (decrypt_image)
         {
             /* Decrypt data before write to des partition */
-            aesDecrypt(ptr_data, read_size);
+            aes128.decrypt(ptr_data, read_size);
         }
         desFlash->program(ptr_data, addr, read_size);
 #if defined(PARTITION_MANAGER_WRITE_READ_CRC32) && (PARTITION_MANAGER_WRITE_READ_CRC32 == 1)
@@ -633,9 +726,14 @@ bool partition_manager::programApp(app_info_t* des, app_info_t* src)
         PARTITION_MNG_TAG_PRINTF("[programApp]\t %u, %08X, %u%%", read_size, crc, addr * 100 / src->fw_header.size);
     }
 
+    if (decrypt_image)
+    {
+        aes128.clear();
+    }
     delete[] ptr_data;
     delete desFlash;
     delete srcFlash;
+    aes128.clear();
 
     PARTITION_MNG_TAG_PRINTF("[programApp]<< finish");
 
@@ -705,6 +803,8 @@ bool partition_manager::backupApp(app_info_t* des, app_info_t* src)
     {
         PARTITION_MNG_TAG_PRINTF("[backupApp]\t processing encrypt image");
         encrypt_image = true;
+        AES128_crypto_t mbr_aes = _mbr.getAes128Params();
+        aes128.setup((const char*)mbr_aes.key, AES::KEY_128, AES::MODE_CBC, (const char*)mbr_aes.iv);
     }
     else
     {
@@ -728,7 +828,8 @@ bool partition_manager::backupApp(app_info_t* des, app_info_t* src)
         srcFlash->read(ptr_data, addr, read_size);
         if (encrypt_image)
         {
-            aesEncrypt(ptr_data, read_size);
+            /* Encrypt data before write to des partition */
+            aes128.encrypt(ptr_data, read_size);
         }
         desFlash->program(ptr_data, addr, read_size);
 #if defined(PARTITION_MANAGER_WRITE_READ_CRC32) && (PARTITION_MANAGER_WRITE_READ_CRC32 == 1)
@@ -746,6 +847,10 @@ bool partition_manager::backupApp(app_info_t* des, app_info_t* src)
         PARTITION_MNG_TAG_PRINTF("[backupApp]\t %u, %08X, %u%%", read_size, crc, addr * 100 / src->fw_header.size);
     }
 
+    if (encrypt_image)
+    {
+        aes128.clear();
+    }
     delete[] ptr_data;
     delete desFlash;
     delete srcFlash;

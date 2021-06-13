@@ -17,6 +17,9 @@
 #define MBR_TAG_PRINTF(...) CONSOLE_TAG_LOGI("[MBR]", __VA_ARGS__)
 
 /* Private defines -----------------------------------------------------------*/
+#define MBR_STARTUP_MODE MAIN_RUN_MODE
+#define MBR_DFU_MODE UPGRADE_MODE_ANY
+
 #define HARDWARE_VERSION_LENGTH_MAX 16
 #define AES128_LENGTH 16
 
@@ -39,35 +42,35 @@
     {                                                                                 \
         .main_app = {.startup_addr = MAIN_APPLICATION_ADDR,                           \
                      .max_size = MAIN_APPLICATION_REGION_SIZE,                        \
-                     .fw_header = {.checksum = 0x1CE7A079,                            \
-                                   .size = 341816,                                    \
+                     .fw_header = {.checksum = MBR_CRC_APP_FACTORY,                   \
+                                   .size = MAIN_APPLICATION_REGION_SIZE,              \
                                    .type = {.u32 = FW_APP_MAIN_TYPE},                 \
-                                   .version = {.u32 = 0x00010003 /*v0.1.3*/}}},       \
+                                   .version = {.u32 = 0x01010001 /*v1.1.1*/}}},       \
         .main_rollback = {.startup_addr = MAIN_APPLICATION_ROLLBACK_ADDR,             \
                           .max_size = MAIN_APPLICATION_ROLLBACK_REGION_SIZE,          \
-                          .fw_header = {.checksum = 0xCACBA276,                       \
-                                        .size = 341816,                               \
+                          .fw_header = {.checksum = MBR_CRC_APP_NONE,                 \
+                                        .size = 0,                                    \
                                         .type = {.u32 = FW_APP_ROLLBACK_TYPE},        \
-                                        .version = {.u32 = 0x00010003 /*v0.1.3*/}}},  \
+                                        .version = {.u32 = 0x00000000 /*v0.0.0*/}}},  \
         .boot_app = {.startup_addr = BOOTLOADER_FACTORY_ADDR,                         \
                      .max_size = BOOTLOADER_FACTORY_REGION_SIZE,                      \
                      .fw_header = {.checksum = MBR_CRC_APP_FACTORY,                   \
-                                   .size = 341776,                                    \
+                                   .size = BOOTLOADER_FACTORY_REGION_SIZE,            \
                                    .type = {.u32 = FW_BOOT_TYPE},                     \
-                                   .version = {.u32 = 0x01010001 /*v0.1.3*/}}},       \
+                                   .version = {.u32 = 0x01010001 /*v1.1.1*/}}},       \
         .boot_rollback = {.startup_addr = BOOTLOADER_ROLLBACK_ADDR,                   \
                           .max_size = BOOTLOADER_ROLLBACK_REGION_SIZE,                \
                           .fw_header = {.checksum = MBR_CRC_APP_NONE,                 \
-                                        .size = 341776,                               \
+                                        .size = 0,                                    \
                                         .type = {.u32 = FW_BOOT_ROLLBACK_TYPE},       \
-                                        .version = {.u32 = 0x00010003 /*v0.1.3*/}}},  \
+                                        .version = {.u32 = 0x00000000 /*v0.0.0*/}}},  \
         .image_download = {.startup_addr = IMAGE_DOWNLOAD_ADDR,                       \
                            .max_size = IMAGE_DOWNLOAD_REGION_SIZE,                    \
-                           .fw_header = {.checksum = 0xCACBA276,                \
-                                         .size = 341816,                              \
+                           .fw_header = {.checksum = MBR_CRC_APP_NONE,                \
+                                         .size = 0,                                   \
                                          .type = {.u32 = FW_IMAGE_DOWNLOAD_TYPE},     \
-                                         .version = {.u32 = 0x00010003 /*v0.1.3*/}}}, \
-        .dfu_num = 0,                                                                 \
+                                         .version = {.u32 = 0x00000000 /*v0.0.0*/}}}, \
+        .dfu_num = {.main = 0, .boot = 0},                                            \
         .hw_version_str = HW_VERSION_STRING,                                          \
         .aes = {.key = {0x9a, 0x95, 0x0f, 0x6c, 0x4f, 0xa1, 0xf9, 0x19,               \
                         0xcb, 0x1e, 0x15, 0x39, 0x56, 0x47, 0x23, 0xe2},              \
@@ -140,12 +143,20 @@ typedef struct
 /* Size of structure must be multiples write_size-byte for write command */
 typedef struct __attribute__((packed, aligned(4)))
 {
-    app_info_t main_app;                              /* main application */
-    app_info_t main_rollback;                         /* rollback application */
-    app_info_t boot_app;                              /* ble bootloader application */
-    app_info_t boot_rollback;                         /* ble bootloader application */
-    app_info_t image_download;                        /* image download application */
-    uint32_t dfu_num;                                 /* Number counter upgrade */
+    app_info_t main_app;       /* main application */
+    app_info_t main_rollback;  /* rollback application */
+    app_info_t boot_app;       /* ble bootloader application */
+    app_info_t boot_rollback;  /* ble bootloader application */
+    app_info_t image_download; /* image download application */
+    union
+    {
+        uint32_t u32;
+        struct
+        {
+            uint16_t main;
+            uint16_t boot;
+        };
+    } dfu_num;                                        /* Number counter upgrade*/
     char hw_version_str[HARDWARE_VERSION_LENGTH_MAX]; /* App Hardware version */
     AES128_crypto_t aes;
     union
@@ -235,6 +246,8 @@ public:
     AES128_crypto_t getAes128Params(void);
     dfu_mode_t getDfuMode(void);
     startup_mode_t getStartUpMode(void);
+    uint16_t getMainDfuNum(void);
+    uint16_t getBootDfuNum(void);
     std::string getHardwareVersion(void);
 
     void setMainParams(app_info_t *pParams);
@@ -246,6 +259,8 @@ public:
     void setDfuMode(dfu_mode_t mode);
     void setStartUpMode(startup_mode_t mode);
     void setHardwareVersion(std::string const &hwName);
+    void setMainDfuNum(uint16_t num);
+    void setBootDfuNum(uint16_t num);
 
 private:
     /* Register callback handler flash memory */

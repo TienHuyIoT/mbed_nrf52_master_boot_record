@@ -44,13 +44,14 @@ public:
     bool cloneMain2ImageDownload(void);
     MasterBootRecord::startup_mode_t getStartUpModeFromMBR(void);
     bool setStartUpModeToMBR(MasterBootRecord::startup_mode_t mode);
-    uint32_t appAddress(void);
+    uint32_t mainAddress(void);
     uint32_t bootAddress(void);
 
 private:
     static SPIFBlockDevice* _spiDevice;
     MasterBootRecord _mbr;
     AES aes128;
+    bool _init_isOK;
     std::string readableSize(float bytes);
     bool programApp(app_info_t* des, app_info_t* src);
     bool backupApp(app_info_t* des, app_info_t* src);
