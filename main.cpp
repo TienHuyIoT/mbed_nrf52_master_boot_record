@@ -35,14 +35,15 @@ int main()
     MAIN_TAG_CONSOLE("======================MBR======================");
     kx022_cs = 1; /* unselect spi bus kx022 */
 
-    // partition_mng.begin();
+    partition_mng.begin();
     // partition_mng.verifyMain();
     // partition_mng.backupMain();
     // partition_mng.backupMain2ImageDownload();
+    partition_mng.cloneMain2ImageDownload();
     // partition_mng.verifyMainRollback();
     // partition_mng.restoreMain();
-    // partition_mng.end();
-    // while(1) {};
+    partition_mng.end();
+    while(1) {};
 
     uint32_t jump_address = startup_application();
     if (jump_address != 0)

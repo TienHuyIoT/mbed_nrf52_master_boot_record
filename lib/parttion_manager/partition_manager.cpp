@@ -17,11 +17,13 @@ static void printData(const void* data, size_t length)
     PARTITION_MNG_PRINTF("\n");
 }
 
+SPIFBlockDevice* partition_manager::_spiDevice = nullptr;
+
 partition_manager::partition_manager(SPIFBlockDevice* spiDevice) :
-_spiDevice(spiDevice),
 _mbr(),
 aes128()
 {
+    _spiDevice = spiDevice;
 }
 
 partition_manager::~partition_manager()
@@ -430,33 +432,68 @@ bool partition_manager::backupMain2ImageDownload(void)
     app_info_t des;
     app_info_t src;
     bool status_isOK = true;
-    PARTITION_MNG_TAG_PRINTF("[backupMain]>> start");
+    PARTITION_MNG_TAG_PRINTF("[backupMain2ImageDownload]>> start");
     des = _mbr.getImageDownloadParams();
     src = _mbr.getMainParams();
     if (backupApp(&des, &src))
     {
         des.fw_header.size = src.fw_header.size;
         des.fw_header.version.u32 = src.fw_header.version.u32;
-        PARTITION_MNG_TAG_PRINTF("[backupMain] update des crc32");
+        PARTITION_MNG_TAG_PRINTF("[backupMain2ImageDownload] update des crc32");
         des.fw_header.checksum = CRC32(&des);
-        PARTITION_MNG_TAG_PRINTF("[backupMain] update MBR");
+        PARTITION_MNG_TAG_PRINTF("[backupMain2ImageDownload] update MBR");
         _mbr.setImageDownloadParams(&des);
         if(_mbr.commit() == MasterBootRecord::MBR_OK)
         {
-            PARTITION_MNG_TAG_PRINTF("[backupMain]\t succeed!");
+            PARTITION_MNG_TAG_PRINTF("[backupMain2ImageDownload]\t succeed!");
         }
         else
         {
-            PARTITION_MNG_TAG_PRINTF("[backupMain]\t failure!");
+            PARTITION_MNG_TAG_PRINTF("[backupMain2ImageDownload]\t failure!");
             status_isOK = false;
         }
     }
     else
     {
-        PARTITION_MNG_TAG_PRINTF("[backupMain]\t failure!");
+        PARTITION_MNG_TAG_PRINTF("[backupMain2ImageDownload]\t failure!");
         status_isOK = false;
     }
-    PARTITION_MNG_TAG_PRINTF("[backupMain]<< finish");
+    PARTITION_MNG_TAG_PRINTF("[backupMain2ImageDownload]<< finish");
+    return status_isOK;
+}
+
+bool partition_manager::cloneMain2ImageDownload(void)
+{
+    app_info_t des;
+    app_info_t src;
+    bool status_isOK = true;
+    PARTITION_MNG_TAG_PRINTF("[cloneMain2ImageDownload]>> start");
+    des = _mbr.getImageDownloadParams();
+    src = _mbr.getMainParams();
+    if (cloneApp(&des, &src))
+    {
+        des.fw_header.size = src.fw_header.size;
+        des.fw_header.version.u32 = src.fw_header.version.u32;
+        PARTITION_MNG_TAG_PRINTF("[cloneMain2ImageDownload] update des crc32");
+        des.fw_header.checksum = CRC32(&des);
+        PARTITION_MNG_TAG_PRINTF("[cloneMain2ImageDownload] update MBR");
+        _mbr.setImageDownloadParams(&des);
+        if(_mbr.commit() == MasterBootRecord::MBR_OK)
+        {
+            PARTITION_MNG_TAG_PRINTF("[cloneMain2ImageDownload]\t succeed!");
+        }
+        else
+        {
+            PARTITION_MNG_TAG_PRINTF("[cloneMain2ImageDownload]\t failure!");
+            status_isOK = false;
+        }
+    }
+    else
+    {
+        PARTITION_MNG_TAG_PRINTF("[cloneMain2ImageDownload]\t failure!");
+        status_isOK = false;
+    }
+    PARTITION_MNG_TAG_PRINTF("[cloneMain2ImageDownload]<< finish");
     return status_isOK;
 }
 
@@ -497,8 +534,8 @@ bool partition_manager::backupBoot(void)
 
 bool partition_manager::programApp(app_info_t* des, app_info_t* src)
 {
-    FlashSPIBlockDevice* srcFlash;
-    FlashIAPBlockDevice* desFlash;
+    FlashHandler* desFlash;
+    FlashHandler* srcFlash;
     uint32_t addr;
     uint32_t remain_size;
     uint32_t read_size;
@@ -536,9 +573,8 @@ bool partition_manager::programApp(app_info_t* des, app_info_t* src)
         return false;
     }
 
-    desFlash = new FlashIAPBlockDevice(des->startup_addr, des->max_size);
-    srcFlash = new FlashSPIBlockDevice(_spiDevice, src->startup_addr, src->max_size);
-    desFlash->init();
+    desFlash = new FlashHandler(des);
+    srcFlash = new FlashHandler(src);
 
     block_size = desFlash->get_erase_size();
     /* Allocate dynamic memory */
@@ -604,8 +640,7 @@ bool partition_manager::programApp(app_info_t* des, app_info_t* src)
     PARTITION_MNG_TAG_PRINTF("[programApp]<< finish");
 
     return status_isOK;
-}
-
+} // programApp
 
 /** @brief copy application image from internal to external
  * @param des information des application
@@ -613,8 +648,8 @@ bool partition_manager::programApp(app_info_t* des, app_info_t* src)
 */
 bool partition_manager::backupApp(app_info_t* des, app_info_t* src)
 {
-    FlashSPIBlockDevice* desFlash;
-    FlashIAPBlockDevice* srcFlash;
+    FlashHandler* desFlash;
+    FlashHandler* srcFlash;
     uint32_t addr;
     uint32_t remain_size;
     uint32_t read_size;
@@ -652,9 +687,8 @@ bool partition_manager::backupApp(app_info_t* des, app_info_t* src)
         return false;
     }
 
-    desFlash = new FlashSPIBlockDevice(_spiDevice, des->startup_addr, des->max_size);
-    srcFlash = new FlashIAPBlockDevice(src->startup_addr, src->max_size);
-    srcFlash->init();
+    desFlash = new FlashHandler(des);
+    srcFlash = new FlashHandler(src);
 
     block_size = desFlash->get_erase_size();
     /* Allocate dynamic memory */
@@ -721,6 +755,92 @@ bool partition_manager::backupApp(app_info_t* des, app_info_t* src)
     return status_isOK;
 } // backupApp
 
+bool partition_manager::cloneApp(app_info_t* des, app_info_t* src)
+{
+    FlashHandler* desFlash;
+    FlashHandler* srcFlash;
+    uint32_t addr;
+    uint32_t remain_size;
+    uint32_t read_size;
+    uint32_t block_size;
+    uint32_t crc;
+    uint8_t *ptr_data;
+    bool status_isOK = true;
+
+    PARTITION_MNG_TAG_PRINTF("[cloneApp]>> start");
+    PARTITION_MNG_TAG_PRINTF("[cloneApp]\t Src internal: addr=0x%x; size=%u",
+                            src->startup_addr,
+                            src->fw_header.size);
+    PARTITION_MNG_TAG_PRINTF("[cloneApp]\t Des external: addr=0x%x; max_size=%u",
+                            des->startup_addr,
+                            des->max_size);
+
+    PARTITION_MNG_TAG_PRINTF("[programApp] verify source");
+    if (!verify(src))
+    {
+        PARTITION_MNG_TAG_PRINTF("[cloneApp]\t application source ERROR");
+        return false;
+    }
+
+    if (src->fw_header.size > des->max_size)
+    {
+        PARTITION_MNG_TAG_PRINTF("[cloneApp]\t Des partition size isn't enough to store source image");
+        return false;
+    }
+
+    desFlash = new FlashHandler(des);
+    srcFlash = new FlashHandler(src);
+
+    block_size = desFlash->get_erase_size();
+    /* Allocate dynamic memory */
+    ptr_data = new (std::nothrow) uint8_t[block_size];
+    if (ptr_data == nullptr)
+    {
+        PARTITION_MNG_TAG_PRINTF("[cloneApp]\t allocate %u memory failed!", block_size);
+        delete desFlash;
+        delete srcFlash;
+        return false;
+    }
+
+    remain_size = src->fw_header.size;
+    addr = 0;
+    while (remain_size)
+    {
+        if (remain_size > block_size)
+        {
+            read_size = block_size;
+        }
+        else
+        {
+            read_size = remain_size;
+        }
+        desFlash->erase(addr, block_size);
+        srcFlash->read(ptr_data, addr, read_size);
+        desFlash->program(ptr_data, addr, read_size);
+#if defined(PARTITION_MANAGER_WRITE_READ_CRC32) && (PARTITION_MANAGER_WRITE_READ_CRC32 == 1)
+        crc = Crc32_CalculateBuffer(ptr_data, read_size);
+        desFlash->read(ptr_data, addr, read_size);
+        if (crc != Crc32_CalculateBuffer(ptr_data, read_size))
+        {
+            status_isOK = false;
+            PARTITION_MNG_TAG_PRINTF("[cloneApp]\t crc32=0x%08X fail!", crc);
+            break;
+        }
+#endif
+        addr += read_size;
+        remain_size -= read_size;
+        PARTITION_MNG_TAG_PRINTF("[cloneApp]\t %u, %08X, %u%%", read_size, crc, addr * 100 / src->fw_header.size);
+    }
+
+    delete[] ptr_data;
+    delete desFlash;
+    delete srcFlash;
+
+    PARTITION_MNG_TAG_PRINTF("[cloneApp]<< finish");
+
+    return status_isOK;
+} // cloneApp
+
 /** Convenience function for checking partition region validity
  *
  *  @param app      app information
@@ -731,7 +851,14 @@ bool partition_manager::verify(app_info_t* app)
   uint32_t crc;
   bool result = false;
   PARTITION_MNG_TAG_PRINTF("[verify]>> start");
-  PARTITION_MNG_TAG_PRINTF("[verify] verify CRC32");
+
+  if (FIRMWARE_TYPE_SIGNAL != app->fw_header.type.signal)
+  {
+      PARTITION_MNG_TAG_PRINTF("[verify]\t app header signal error");
+      return false;
+  }
+
+  PARTITION_MNG_TAG_PRINTF("[verify]\t check CRC32");
   crc = this->CRC32(app);
   if(crc == app->fw_header.checksum)
   {
@@ -741,7 +868,7 @@ bool partition_manager::verify(app_info_t* app)
   else
   {
     result = false;
-    PARTITION_MNG_TAG_PRINTF("[verify] error crc=0x%X, expected crc=0x%X", crc, app->fw_header.checksum);
+    PARTITION_MNG_TAG_PRINTF("[verify]\t error crc=0x%X, expected crc=0x%X", crc, app->fw_header.checksum);
     PARTITION_MNG_TAG_PRINTF("[verify]\t App Fail");
   }
   PARTITION_MNG_TAG_PRINTF("[verify]<< finish");
@@ -767,7 +894,7 @@ uint32_t partition_manager::CRC32(app_info_t* app)
             PARTITION_MNG_TAG_PRINTF("[CRC32]\t internal fw_header size error");
             return 0;
         }
-        PARTITION_MNG_TAG_PRINTF("[CRC32] internal memory");
+        PARTITION_MNG_TAG_PRINTF("[CRC32]\t internal memory");
         CRC32_Accumulate((uint8_t *) app->startup_addr, app->fw_header.size);
     }
     else
@@ -778,7 +905,7 @@ uint32_t partition_manager::CRC32(app_info_t* app)
         uint32_t read_size;
         uint32_t block_size;
 
-        PARTITION_MNG_TAG_PRINTF("[CRC32] external memory");
+        PARTITION_MNG_TAG_PRINTF("[CRC32]\t external memory");
         spiFlash = new FlashSPIBlockDevice(_spiDevice, app->startup_addr, app->max_size);
         block_size = spiFlash->get_erase_size();
         /* Allocate dynamic memory */

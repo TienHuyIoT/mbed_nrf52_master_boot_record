@@ -17,6 +17,8 @@
 
 /* Private defines -----------------------------------------------------------*/
 #define PARTITION_MANAGER_WRITE_READ_CRC32 1
+#define MAIN_APP_HEADER_LOCATION 0x15FE0
+#define BOOT_APP_HEADER_LOCATION 0x15FC0
 
 class partition_manager
 {
@@ -39,22 +41,103 @@ public:
     bool backupMain(void);
     bool backupBoot(void);
     bool backupMain2ImageDownload(void);
+    bool cloneMain2ImageDownload(void);
     MasterBootRecord::startup_mode_t getStartUpModeFromMBR(void);
     bool setStartUpModeToMBR(MasterBootRecord::startup_mode_t mode);
     uint32_t appAddress(void);
     uint32_t bootAddress(void);
 
 private:
-    SPIFBlockDevice* _spiDevice;
+    static SPIFBlockDevice* _spiDevice;
     MasterBootRecord _mbr;
     AES aes128;
     std::string readableSize(float bytes);
     bool programApp(app_info_t* des, app_info_t* src);
     bool backupApp(app_info_t* des, app_info_t* src);
+    bool cloneApp(app_info_t* des, app_info_t* src);
     bool verify(app_info_t* app);
     uint32_t CRC32(app_info_t* app);
     void aesEncrypt(void *data, size_t length);
     void aesDecrypt(void *data, size_t length);
+
+    class FlashHandler
+    {
+    private:
+        FlashSPIBlockDevice* spiFlash;
+        FlashIAPBlockDevice* iapFlash;
+        bool _external;
+    public:
+        FlashHandler(app_info_t* app)
+        {
+            if (app->fw_header.type.mem == MasterBootRecord::MEMORY_EXTERNAL)
+            {
+                _external = true;
+                spiFlash = new FlashSPIBlockDevice(_spiDevice, app->startup_addr, app->max_size);
+                spiFlash->init();
+            }
+            else
+            {
+                _external = false;
+                iapFlash = new FlashIAPBlockDevice(app->startup_addr, app->max_size);
+                iapFlash->init();
+            }
+        }
+
+        ~FlashHandler(){
+            if (_external)
+            {
+                delete spiFlash;
+            }
+            else
+            {
+                delete iapFlash;
+            }
+        }
+
+        int read(void *buffer, uint32_t addr, uint32_t size) {
+            if (_external)
+            {
+                return spiFlash->read(buffer, addr, size);
+            }
+            else
+            {
+                return iapFlash->read(buffer, addr, size);
+            }
+        }
+
+        int program(const void *buffer, uint32_t addr, uint32_t size) {
+            if (_external)
+            {
+                return spiFlash->program(buffer, addr, size);
+            }
+            else
+            {
+                return iapFlash->program(buffer, addr, size);
+            }
+        }
+
+        int erase(uint32_t addr, uint32_t size) {
+            if (_external)
+            {
+                return spiFlash->erase(addr, size);
+            }
+            else
+            {
+                return iapFlash->erase(addr, size);
+            }
+        }
+
+        uint32_t get_erase_size(void) const {
+            if (_external)
+            {
+                return spiFlash->get_erase_size();
+            }
+            else
+            {
+                return iapFlash->get_erase_size();
+            }
+        }
+    };
 };
 
 #endif /* __PARTITON_MANAGER_H */
