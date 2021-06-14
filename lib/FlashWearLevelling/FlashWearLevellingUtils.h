@@ -24,7 +24,7 @@
 #include "console_dbg.h"
 
 #define MEMORY_SIZE_DEFAULT 4096U /* 4KB */
-#define PAGE_SIZE_DEFAULT 4096U /* 4096-Byte */
+#define PAGE_ERASE_SIZE_DEFAULT 4096U /* 4096-Byte */
 
 #define FWL_TAG_INFO(...) //CONSOLE_TAG_LOGI("[FWL]", __VA_ARGS__)
 #define FWL_INFO(...) //CONSOLE_LOGI(__VA_ARGS__)
@@ -108,7 +108,7 @@ class FlashWearLevellingUtils
 public:
     FlashWearLevellingUtils(uint32_t start_addr = 0, 
                             size_t memory_size = MEMORY_SIZE_DEFAULT, 
-                            uint16_t page_size = PAGE_SIZE_DEFAULT,
+                            uint16_t page_erase_size = PAGE_ERASE_SIZE_DEFAULT,
                             uint16_t data_length = 1);
     ~FlashWearLevellingUtils();
     void setCallbacks(FlashWearLevellingCallbacks *pCallbacks);
@@ -154,7 +154,7 @@ private:
     size_t _memory_size;
     uint32_t _start_addr;
     memory_cxt_t _memory_cxt;
-    uint16_t _page_size;
+    uint16_t _page_erase_size;
     FlashWearLevellingCallbacks *_pCallbacks;
     bool findLastHeader();
     bool header_isDefault(void);

@@ -1,3 +1,19 @@
+/** @file partition_manager.h
+ *  @brief Partition management using for master boot record
+ *
+ *  @author tienhuyiot
+ *
+ * <pre>
+ * MODIFICATION HISTORY:
+ *
+ * Ver    Who                      Date             Changes
+ * -----  --------------------     ----------       --------------------
+ * 1.0    tienhuyiot@gmail.com     Jun 14, 2021     Initialize
+ *
+ *
+ *</pre>
+ */
+
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __PARTITON_MANAGER_H
 #define __PARTITON_MANAGER_H
@@ -16,9 +32,7 @@
 #define PARTITION_MNG_TAG_PRINTF(...) CONSOLE_TAG_LOGI("[PARTITION_MNG]", __VA_ARGS__)
 
 /* Private defines -----------------------------------------------------------*/
-#define PARTITION_MANAGER_WRITE_READ_CRC32 1
-#define MAIN_APP_HEADER_LOCATION 0x15FE0
-#define BOOT_APP_HEADER_LOCATION 0x15FC0
+#define PM_VERIFY_DATA_BY_CRC32 1
 
 class partition_manager
 {

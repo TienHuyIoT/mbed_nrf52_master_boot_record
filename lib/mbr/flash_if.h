@@ -1,3 +1,19 @@
+/** @file flash_if.h
+ *  @brief Interface template IAP and SPI flash
+ *
+ *  @author tienhuyiot
+ *
+ * <pre>
+ * MODIFICATION HISTORY:
+ *
+ * Ver    Who                      Date             Changes
+ * -----  --------------------     ----------       --------------------
+ * 1.0    tienhuyiot@gmail.com     Jun 14, 2021     Initialize
+ *
+ *
+ *</pre>
+ */
+
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __FLASH_IF_H
 #define __FLASH_IF_H

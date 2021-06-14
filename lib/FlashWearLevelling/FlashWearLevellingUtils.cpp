@@ -21,10 +21,10 @@ static uint32_t fwl_header_crc32(memory_cxt_t* mem)
 FlashWearLevellingUtils::
     FlashWearLevellingUtils(uint32_t start_addr,
                             size_t memory_size,
-                            uint16_t page_size,
+                            uint16_t page_erase_size,
                             uint16_t data_length) : _start_addr(start_addr),
                                                   _memory_size(memory_size),
-                                                  _page_size(page_size),
+                                                  _page_erase_size(page_erase_size),
                                                   _header2data_offset_length(16U),
                                                   _data_length(data_length)
 {
@@ -41,7 +41,7 @@ bool FlashWearLevellingUtils::begin(bool formatOnFail)
 {
     FWL_TAG_INFO("[begin] start_addr: %u(0x%x)", _start_addr, _start_addr);
     FWL_TAG_INFO("[begin] memory_size: %u(0x%x)", _memory_size, _memory_size);
-    FWL_TAG_INFO("[begin] page_size: %u(0x%x)", _page_size, _page_size);
+    FWL_TAG_INFO("[begin] page_erase_size: %u(0x%x)", _page_erase_size, _page_erase_size);
 
     FWL_TAG_INFO("[begin] verify memory information");
     if (!verifyMemInfo())
@@ -83,11 +83,11 @@ bool FlashWearLevellingUtils::format()
     bool format = true;
 
     /* Allocate dynamic memory */
-    uint8_t *ptr_data = new (std::nothrow) uint8_t[_page_size];
+    uint8_t *ptr_data = new (std::nothrow) uint8_t[_page_erase_size];
     if (ptr_data != nullptr)
     {
-        uint16_t length = _page_size;
-        FWL_TAG_INFO("[format] first check");
+        uint16_t length = _page_erase_size;
+        FWL_TAG_INFO("[format] verify the first page erase");
         if (_pCallbacks->onRead(_start_addr, ptr_data, &length))
         {
             format = false;
@@ -107,7 +107,7 @@ bool FlashWearLevellingUtils::format()
     {
         /* Erase first page */
         FWL_TAG_INFO("[format] erase first page");
-        if (!_pCallbacks->onErase(_start_addr, _page_size))
+        if (!_pCallbacks->onErase(_start_addr, _page_erase_size))
         {
             FWL_TAG_INFO("[format] erase failed!");
             return false;
@@ -452,7 +452,7 @@ bool FlashWearLevellingUtils::saveHeader(memory_cxt_t *mem)
 
         /* Erase first page */
         FWL_TAG_INFO("[saveHeader] erase first page");
-        if (!_pCallbacks->onErase(_start_addr, _page_size))
+        if (!_pCallbacks->onErase(_start_addr, _page_erase_size))
         {
             FWL_TAG_INFO("[saveHeader] erase failed!");
             return false;
@@ -674,8 +674,8 @@ bool FlashWearLevellingUtils::eraseData(uint32_t addr, uint16_t length)
     uint32_t offset_addr, remain_size, erase_addr, page_erase_cnt;
     bool status_isOK = true;
 
-    offset_addr = addr % _page_size;
-    remain_size = _page_size - offset_addr;
+    offset_addr = addr % _page_erase_size;
+    remain_size = _page_erase_size - offset_addr;
     erase_addr = addr + remain_size;
 
     FWL_TAG_INFO("[eraseData] addr in: %u(0x%x)", addr, addr);
@@ -706,7 +706,7 @@ bool FlashWearLevellingUtils::eraseData(uint32_t addr, uint16_t length)
         }
 
         /* Assert memory size */
-        if ((erase_addr + _page_size) > (_start_addr + _memory_size))
+        if ((erase_addr + _page_erase_size) > (_start_addr + _memory_size))
         {
             FWL_TAG_INFO("[eraseData] addr failed!");
             status_isOK = false;
@@ -714,7 +714,7 @@ bool FlashWearLevellingUtils::eraseData(uint32_t addr, uint16_t length)
         }
 
         /* Erase next page */
-        if (!_pCallbacks->onErase(erase_addr, _page_size))
+        if (!_pCallbacks->onErase(erase_addr, _page_erase_size))
         {
             FWL_TAG_INFO("[eraseData] erase failed!");
             status_isOK = false;
@@ -726,9 +726,9 @@ bool FlashWearLevellingUtils::eraseData(uint32_t addr, uint16_t length)
         /* Remain Length */
         length -= remain_size;
         /* Write data with write_length
-            if (length >= _page_size)
+            if (length >= _page_erase_size)
             {
-                write_length = _page_size;
+                write_length = _page_erase_size;
             }
             else
             {
@@ -742,10 +742,10 @@ bool FlashWearLevellingUtils::eraseData(uint32_t addr, uint16_t length)
         */
 
         /* new remain size is equal page size */
-        remain_size = _page_size;
+        remain_size = _page_erase_size;
 
         /* update address to erase next page */
-        erase_addr += _page_size;
+        erase_addr += _page_erase_size;
 
         FWL_TAG_INFO("[eraseData] remain length: %u", length);
         FWL_TAG_INFO("[eraseData] remain_size: %u", remain_size);
@@ -768,15 +768,15 @@ bool FlashWearLevellingUtils::eraseData(uint32_t addr, uint16_t length)
 */
 bool FlashWearLevellingUtils::verifyMemInfo()
 {
-    if ((_start_addr % _page_size))
+    if ((_start_addr % _page_erase_size))
     {
-        FWL_TAG_INFO("[verifyMemInfo][error] _start_addr must be multiples _page_size");
+        FWL_TAG_INFO("[verifyMemInfo][error] _start_addr must be multiples _page_erase_size");
         return false;
     }
 
-    if ((0 == _memory_size) || (_memory_size % _page_size))
+    if ((0 == _memory_size) || (_memory_size % _page_erase_size))
     {
-        FWL_TAG_INFO("[verifyMemInfo][error] _memory_size must be multiples _page_size");
+        FWL_TAG_INFO("[verifyMemInfo][error] _memory_size must be multiples _page_erase_size");
         return false;
     }
 

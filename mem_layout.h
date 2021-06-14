@@ -14,8 +14,11 @@ Internal memory layout
 |       (300K)      |
 |                   |
 +-------------------+   (0x16000)BOOTLOADER_FACTORY_ADDR
+|                   |   (0x15FE0)MAIN_APP_HEADER_GENERAL_LOCATION
+|                   |   (0x15FC0)BOOT_APP_HEADER_GENERAL_LOCATION
 |      MBR params   |
 |        (8K)       |   MASTER_BOOT_PARAMS_REGION_SIZE
+|                   |
 +-------------------+   (0x14000)MASTER_BOOT_PARAMS_ADDR
 |                   |
 |        MBR        |

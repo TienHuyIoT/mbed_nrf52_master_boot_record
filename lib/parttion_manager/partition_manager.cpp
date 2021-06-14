@@ -49,8 +49,8 @@ void partition_manager::begin(void)
     app = _mbr.getMainParams();
     if (MBR_CRC_APP_FACTORY == app.fw_header.checksum)
     {
-        memcpy(&fw_header, (uint8_t*)MAIN_APP_HEADER_LOCATION, sizeof(firmwareHeader_t));
-        PARTITION_MNG_TAG_PRINTF("[begin] Main firmware header at 0x%X", MAIN_APP_HEADER_LOCATION);
+        memcpy(&fw_header, (uint8_t*)MAIN_APP_HEADER_GENERAL_LOCATION, sizeof(firmwareHeader_t));
+        PARTITION_MNG_TAG_PRINTF("[begin] Main firmware header at 0x%X", MAIN_APP_HEADER_GENERAL_LOCATION);
         PARTITION_MNG_TAG_PRINTF("\t checksum: 0x%x", fw_header.checksum);
         PARTITION_MNG_TAG_PRINTF("\t size: %u(%s)", fw_header.size, readableSize(fw_header.size).c_str());
         PARTITION_MNG_TAG_PRINTF("\t type: 0x%X", fw_header.type.u32);
@@ -81,8 +81,8 @@ void partition_manager::begin(void)
     app = _mbr.getBootParams();
     if (MBR_CRC_APP_FACTORY == app.fw_header.checksum)
     {
-        memcpy(&fw_header, (uint8_t*)BOOT_APP_HEADER_LOCATION, sizeof(firmwareHeader_t));
-        PARTITION_MNG_TAG_PRINTF("[begin] Boot firmware header at 0x%X", BOOT_APP_HEADER_LOCATION);
+        memcpy(&fw_header, (uint8_t*)BOOT_APP_HEADER_GENERAL_LOCATION, sizeof(firmwareHeader_t));
+        PARTITION_MNG_TAG_PRINTF("[begin] Boot firmware header at 0x%X", BOOT_APP_HEADER_GENERAL_LOCATION);
         PARTITION_MNG_TAG_PRINTF("\t checksum: 0x%x", fw_header.checksum);
         PARTITION_MNG_TAG_PRINTF("\t size: %u(%s)", fw_header.size, readableSize(fw_header.size).c_str());
         PARTITION_MNG_TAG_PRINTF("\t type: 0x%X", fw_header.type.u32);
@@ -711,7 +711,7 @@ bool partition_manager::programApp(app_info_t* des, app_info_t* src)
             aes128.decrypt(ptr_data, read_size);
         }
         desFlash->program(ptr_data, addr, read_size);
-#if defined(PARTITION_MANAGER_WRITE_READ_CRC32) && (PARTITION_MANAGER_WRITE_READ_CRC32 == 1)
+#if defined(PM_VERIFY_DATA_BY_CRC32) && (PM_VERIFY_DATA_BY_CRC32 == 1)
         crc = Crc32_CalculateBuffer(ptr_data, read_size);
         desFlash->read(ptr_data, addr, read_size);
         if (crc != Crc32_CalculateBuffer(ptr_data, read_size))
@@ -832,7 +832,7 @@ bool partition_manager::backupApp(app_info_t* des, app_info_t* src)
             aes128.encrypt(ptr_data, read_size);
         }
         desFlash->program(ptr_data, addr, read_size);
-#if defined(PARTITION_MANAGER_WRITE_READ_CRC32) && (PARTITION_MANAGER_WRITE_READ_CRC32 == 1)
+#if defined(PM_VERIFY_DATA_BY_CRC32) && (PM_VERIFY_DATA_BY_CRC32 == 1)
         crc = Crc32_CalculateBuffer(ptr_data, read_size);
         desFlash->read(ptr_data, addr, read_size);
         if (crc != Crc32_CalculateBuffer(ptr_data, read_size))
@@ -922,7 +922,7 @@ bool partition_manager::cloneApp(app_info_t* des, app_info_t* src)
         desFlash->erase(addr, block_size);
         srcFlash->read(ptr_data, addr, read_size);
         desFlash->program(ptr_data, addr, read_size);
-#if defined(PARTITION_MANAGER_WRITE_READ_CRC32) && (PARTITION_MANAGER_WRITE_READ_CRC32 == 1)
+#if defined(PM_VERIFY_DATA_BY_CRC32) && (PM_VERIFY_DATA_BY_CRC32 == 1)
         crc = Crc32_CalculateBuffer(ptr_data, read_size);
         desFlash->read(ptr_data, addr, read_size);
         if (crc != Crc32_CalculateBuffer(ptr_data, read_size))

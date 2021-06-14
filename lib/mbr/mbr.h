@@ -1,3 +1,20 @@
+/** @file mbr.h
+ *  @brief Master boot record using FlashWearLevellingUtils lib to manager
+ *          data header and application partition
+ *
+ *  @author tienhuyiot
+ *
+ * <pre>
+ * MODIFICATION HISTORY:
+ *
+ * Ver    Who                      Date             Changes
+ * -----  --------------------     ----------       --------------------
+ * 1.0    tienhuyiot@gmail.com     Jun 14, 2021     Initialize
+ *
+ *
+ *</pre>
+ */
+
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __MBR_H /* MASTER BOOT RECORD HEADER */
 #define __MBR_H
@@ -37,6 +54,14 @@
 #define FW_BOOT_ROLLBACK_TYPE 0x55000101
 /* 55(signal)-00/01(boot/app)-01(encrypt image)-01(external) */
 #define FW_IMAGE_DOWNLOAD_TYPE 0x55010101
+
+/** Address main header and boot header general using for partition manager
+ * The first bootup, the MBR have checksum default for main header and boot header
+ * Partition manager (PM) should be check app header and boot header at this specific address.
+ * If main header or boot header true. PM will update new header for main or boot into MBR.
+ */
+#define MAIN_APP_HEADER_GENERAL_LOCATION 0x15FE0
+#define BOOT_APP_HEADER_GENERAL_LOCATION 0x15FC0
 
 #define MBR_INFO_DEFAULT                                                              \
     {                                                                                 \

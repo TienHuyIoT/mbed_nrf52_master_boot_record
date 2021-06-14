@@ -6,5 +6,4 @@
 *.py*
 BUILD
 .mbed
-AES
 mbed-os
