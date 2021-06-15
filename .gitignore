@@ -4,6 +4,4 @@
 *mbed-os
 *resources
 *.py*
-BUILD
 .mbed
-mbed-os

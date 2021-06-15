@@ -14,19 +14,29 @@ MasterBootRecord::MasterBootRecord() : /* Initialization FlashWearLevellingUtils
                                        /* Initialization flashIFCallback object with flashInterface handler */
                                        _fp_callback(&_flash_internal_handler)
 {
+    _init_isOK = false;
 }
 
 MasterBootRecord::~MasterBootRecord() {
-    _flash_internal_handler.end();
+    this->end();
 }
 
 void MasterBootRecord::end(void)
 {
-    _flash_internal_handler.end();
+    if (_init_isOK)
+    {
+        _flash_internal_handler.end();
+        _init_isOK = false;
+    }
 }
 
 MasterBootRecord::mbr_status_t MasterBootRecord::begin(void)
 {
+    if (_init_isOK)
+    {
+        return MBR_OK;
+    }
+    
     /* Init flashIFCallback object with flashInterface handler */
     if (_flash_internal_handler.begin() != flash_status_t::FLASHIF_OK)
     {
@@ -43,6 +53,8 @@ MasterBootRecord::mbr_status_t MasterBootRecord::begin(void)
     }
 
     this->load();
+
+    _init_isOK = true;
     return MBR_OK;
 }
 
@@ -131,6 +143,16 @@ MasterBootRecord::startup_mode_t MasterBootRecord::getStartUpMode(void)
     return (MasterBootRecord::startup_mode_t)_mbr_info.common.startup_mode;
 }
 
+MasterBootRecord::app_status_t MasterBootRecord::getMainStatus(void)
+{
+    return (MasterBootRecord::app_status_t)_mbr_info.main_app.common.app_status;
+}
+
+MasterBootRecord::app_status_t MasterBootRecord::getBootStatus(void)
+{
+    return (MasterBootRecord::app_status_t)_mbr_info.boot_app.common.app_status;
+}
+
 uint16_t MasterBootRecord::getMainDfuNum(void)
 {
     return _mbr_info.dfu_num.main;
@@ -187,6 +209,16 @@ void MasterBootRecord::setStartUpMode(startup_mode_t mode)
     _mbr_info.common.startup_mode = mode;
 }
 
+void MasterBootRecord::setMainStatus(app_status_t status)
+{
+    _mbr_info.main_app.common.app_status = status;
+}
+
+void MasterBootRecord::setBootStatus(app_status_t status)
+{
+    _mbr_info.boot_app.common.app_status = status;
+}
+
 void MasterBootRecord::setHardwareVersion(std::string const &hwName)
 {
     memcpy(_mbr_info.hw_version_str, hwName.data(), HARDWARE_VERSION_LENGTH_MAX);
@@ -210,61 +242,61 @@ void MasterBootRecord::printMbrInfo(void)
     {
         MBR_TAG_PRINTF("MBR information");
         MBR_TAG_PRINTF("main_app:");
-        MBR_TAG_PRINTF("\t startup_addr: 0x%x", _mbr_info.main_app.startup_addr);
+        MBR_TAG_PRINTF("\t startup_addr: 0x%08x", _mbr_info.main_app.startup_addr);
         MBR_TAG_PRINTF("\t max_size: %s", readableSize(_mbr_info.main_app.max_size).c_str());
-        MBR_TAG_PRINTF("\t checksum: 0x%x", _mbr_info.main_app.fw_header.checksum);
+        MBR_TAG_PRINTF("\t checksum: 0x%08x", _mbr_info.main_app.fw_header.checksum);
         MBR_TAG_PRINTF("\t size: %u(%s)", _mbr_info.main_app.fw_header.size, 
                         readableSize(_mbr_info.main_app.fw_header.size).c_str());
-        MBR_TAG_PRINTF("\t version: 0x%X", _mbr_info.main_app.fw_header.version.u32);
+        MBR_TAG_PRINTF("\t version: 0x%08X", _mbr_info.main_app.fw_header.version.u32);
         MBR_TAG_PRINTF("\t type: %s, %s, %s\n", 
                         _mbr_info.main_app.fw_header.type.mem ? "external" : "internal",
                         _mbr_info.main_app.fw_header.type.enc ? "encrypt" : "raw",
                         _mbr_info.main_app.fw_header.type.app ? "Main" : "Boot");
 
         MBR_TAG_PRINTF("boot_app:");
-        MBR_TAG_PRINTF("\t startup_addr: 0x%x", _mbr_info.boot_app.startup_addr);
+        MBR_TAG_PRINTF("\t startup_addr: 0x%08x", _mbr_info.boot_app.startup_addr);
         MBR_TAG_PRINTF("\t max_size: %s", readableSize(_mbr_info.boot_app.max_size).c_str());
-        MBR_TAG_PRINTF("\t checksum: 0x%x", _mbr_info.boot_app.fw_header.checksum);
+        MBR_TAG_PRINTF("\t checksum: 0x%08x", _mbr_info.boot_app.fw_header.checksum);
         MBR_TAG_PRINTF("\t size: %u(%s)", _mbr_info.boot_app.fw_header.size, 
                         readableSize(_mbr_info.boot_app.fw_header.size).c_str());
-        MBR_TAG_PRINTF("\t version: 0x%X", _mbr_info.boot_app.fw_header.version.u32);
-        MBR_TAG_PRINTF("\t type: mem(%u), enc(%u), app(%u)\n", 
+        MBR_TAG_PRINTF("\t version: 0x%08X", _mbr_info.boot_app.fw_header.version.u32);
+        MBR_TAG_PRINTF("\t type: %s, %s, %s\n", 
                         _mbr_info.boot_app.fw_header.type.mem ? "external" : "internal",
                         _mbr_info.boot_app.fw_header.type.enc ? "encrypt" : "raw",
                         _mbr_info.boot_app.fw_header.type.app ? "Main" : "Boot");
 
         MBR_TAG_PRINTF("main_rollback:");
-        MBR_TAG_PRINTF("\t startup_addr: 0x%x", _mbr_info.main_rollback.startup_addr);
+        MBR_TAG_PRINTF("\t startup_addr: 0x%08x", _mbr_info.main_rollback.startup_addr);
         MBR_TAG_PRINTF("\t max_size: %s", readableSize(_mbr_info.main_rollback.max_size).c_str());
-        MBR_TAG_PRINTF("\t checksum: 0x%x", _mbr_info.main_rollback.fw_header.checksum);
+        MBR_TAG_PRINTF("\t checksum: 0x%08x", _mbr_info.main_rollback.fw_header.checksum);
         MBR_TAG_PRINTF("\t size: %u(%s)", _mbr_info.main_rollback.fw_header.size, 
                         readableSize(_mbr_info.main_rollback.fw_header.size).c_str());
-        MBR_TAG_PRINTF("\t version: 0x%X", _mbr_info.main_rollback.fw_header.version.u32);
-        MBR_TAG_PRINTF("\t type: mem(%u), enc(%u), app(%u)\n", 
+        MBR_TAG_PRINTF("\t version: 0x%08X", _mbr_info.main_rollback.fw_header.version.u32);
+        MBR_TAG_PRINTF("\t type: %s, %s, %s\n", 
                         _mbr_info.main_rollback.fw_header.type.mem ? "external" : "internal",
                         _mbr_info.main_rollback.fw_header.type.enc ? "encrypt" : "raw",
                         _mbr_info.main_rollback.fw_header.type.app ? "Main" : "Boot");
 
         MBR_TAG_PRINTF("boot_rollback:");
-        MBR_TAG_PRINTF("\t startup_addr: 0x%x", _mbr_info.boot_rollback.startup_addr);
+        MBR_TAG_PRINTF("\t startup_addr: 0x%08x", _mbr_info.boot_rollback.startup_addr);
         MBR_TAG_PRINTF("\t max_size: %s", readableSize(_mbr_info.boot_rollback.max_size).c_str());
-        MBR_TAG_PRINTF("\t checksum: 0x%x", _mbr_info.boot_rollback.fw_header.checksum);
+        MBR_TAG_PRINTF("\t checksum: 0x%08x", _mbr_info.boot_rollback.fw_header.checksum);
         MBR_TAG_PRINTF("\t size: %u(%s)", _mbr_info.boot_rollback.fw_header.size, 
                         readableSize(_mbr_info.boot_rollback.fw_header.size).c_str());
-        MBR_TAG_PRINTF("\t version: 0x%X", _mbr_info.boot_rollback.fw_header.version.u32);
-        MBR_TAG_PRINTF("\t type: mem(%u), enc(%u), app(%u)\n", 
+        MBR_TAG_PRINTF("\t version: 0x%X08", _mbr_info.boot_rollback.fw_header.version.u32);
+        MBR_TAG_PRINTF("\t type: %s, %s, %s\n", 
                         _mbr_info.boot_rollback.fw_header.type.mem ? "external" : "internal",
                         _mbr_info.boot_rollback.fw_header.type.enc ? "encrypt" : "raw",
                         _mbr_info.boot_rollback.fw_header.type.app ? "Main" : "Boot");
 
         MBR_TAG_PRINTF("image_download:");
-        MBR_TAG_PRINTF("\t startup_addr: 0x%x", _mbr_info.image_download.startup_addr);
+        MBR_TAG_PRINTF("\t startup_addr: 0x%08x", _mbr_info.image_download.startup_addr);
         MBR_TAG_PRINTF("\t max_size: %s", readableSize(_mbr_info.image_download.max_size).c_str());
-        MBR_TAG_PRINTF("\t checksum: 0x%x", _mbr_info.image_download.fw_header.checksum);
+        MBR_TAG_PRINTF("\t checksum: 0x%08x", _mbr_info.image_download.fw_header.checksum);
         MBR_TAG_PRINTF("\t size: %u(%s)", _mbr_info.image_download.fw_header.size, 
                         readableSize(_mbr_info.image_download.fw_header.size).c_str());
-        MBR_TAG_PRINTF("\t version: 0x%X", _mbr_info.image_download.fw_header.version.u32);
-        MBR_TAG_PRINTF("\t type: mem(%u), enc(%u), app(%u)\n",
+        MBR_TAG_PRINTF("\t version: 0x%08X", _mbr_info.image_download.fw_header.version.u32);
+        MBR_TAG_PRINTF("\t type: %s, %s, %s\n",
                         _mbr_info.image_download.fw_header.type.mem ? "external" : "internal",
                         _mbr_info.image_download.fw_header.type.enc ? "encrypt" : "raw",
                         _mbr_info.image_download.fw_header.type.app ? "Main" : "Boot");
@@ -280,6 +312,36 @@ void MasterBootRecord::printMbrInfo(void)
         MBR_TAG_PRINTF("MBR information load ERROR");
     }
 #endif
+}
+
+void MasterBootRecord::printAppInfo(app_info_t *pParams)
+{
+    MBR_TAG_PRINTF("[printAppInfo] Information");
+    MBR_TAG_PRINTF("\t startup_addr: 0x%08x", pParams->startup_addr);
+    MBR_TAG_PRINTF("\t max_size: %s", readableSize(pParams->max_size).c_str());
+    MBR_TAG_PRINTF("\t checksum: 0x%08x", pParams->fw_header.checksum);
+    MBR_TAG_PRINTF("\t size: %u(%s)", pParams->fw_header.size, 
+                    readableSize(pParams->fw_header.size).c_str());
+    MBR_TAG_PRINTF("\t version: 0x%08X", pParams->fw_header.version.u32);
+    MBR_TAG_PRINTF("\t type(0x%X): %s, %s, %s\n",
+                    pParams->fw_header.type.u32,
+                    pParams->fw_header.type.mem ? "external" : "internal",
+                    pParams->fw_header.type.enc ? "encrypt" : "raw",
+                    pParams->fw_header.type.app ? "Main" : "Boot");
+}
+
+void MasterBootRecord::printFwHeaderInfo(firmwareHeader_t *fwHeader)
+{
+    MBR_TAG_PRINTF("[printFwHeaderInfo] Information");
+    MBR_TAG_PRINTF("\t checksum: 0x%08x", fwHeader->checksum);
+    MBR_TAG_PRINTF("\t size: %u(%s)", fwHeader->size, 
+                    readableSize(fwHeader->size).c_str());
+    MBR_TAG_PRINTF("\t version: 0x%08X", fwHeader->version.u32);
+    MBR_TAG_PRINTF("\t type(0x%X): %s, %s, %s\n",
+                    fwHeader->type.u32,
+                    fwHeader->type.mem ? "external" : "internal",
+                    fwHeader->type.enc ? "encrypt" : "raw",
+                    fwHeader->type.app ? "Main" : "Boot");
 }
 
 std::string MasterBootRecord::readableSize(float bytes) {

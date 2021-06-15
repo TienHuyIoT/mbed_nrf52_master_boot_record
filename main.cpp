@@ -3,6 +3,7 @@
 #include "pinmap_ex.h"
 #include <SPI.h>
 #include "mem_layout.h"
+#include "mbr.h"
 #include "partition_manager.h"
 #include "console_dbg.h"
 
@@ -87,6 +88,11 @@ static uint32_t startup_application(void)
                 MAIN_TAG_CONSOLE("===================== UPGRADE_MAIN ====================");
                 if (partition_mng.upgradeMain())
                 {
+                    /** Set status waiting confirm when main application start
+                     * If the application can't confirm. Then new reset by wdt,...
+                     * MBR auto restore application
+                     */
+                    partition_mng.setMainStatusToMBR(MasterBootRecord::APP_STATUS_WAIT_CONFIRM);
                     jump_address = partition_mng.mainAddress();
                 }
                 else
@@ -102,6 +108,11 @@ static uint32_t startup_application(void)
                 MAIN_TAG_CONSOLE("===================== UPGRADE_BOOT ====================");
                 if (partition_mng.upgradeBoot())
                 {
+                    /** Set status waiting confirm when boot application start
+                     * If the application can't confirm. Then new reset by wdt,...
+                     * MBR auto restore application
+                     */
+                    partition_mng.setBootStatusToMBR(MasterBootRecord::APP_STATUS_WAIT_CONFIRM);
                     jump_address = partition_mng.bootAddress();
                 }
                 else
@@ -125,8 +136,15 @@ static uint32_t startup_application(void)
         MAIN_TAG_CONSOLE("===================== MAIN_RUN_MODE =====================");
         if (partition_mng.verifyMain())
         {
-            jump_address = partition_mng.mainAddress();
-            break;
+            if (partition_mng.getMainStatusFromMBR() == MasterBootRecord::APP_STATUS_OK)
+            {
+                jump_address = partition_mng.mainAddress();
+                break;
+            }
+            else
+            {
+                MAIN_TAG_CONSOLE("MAIN_RUN_MODE status Error");
+            }
         }
         else
         {
@@ -139,6 +157,7 @@ static uint32_t startup_application(void)
         if (partition_mng.restoreMain())
         {
             jump_address = partition_mng.mainAddress();
+            MAIN_TAG_CONSOLE("MAIN_ROLLBACK_MODE OK");
             break;
         }
         else
@@ -151,8 +170,15 @@ static uint32_t startup_application(void)
         MAIN_TAG_CONSOLE("===================== BOOT_RUN_MODE =====================");
         if (partition_mng.verifyBoot())
         {
-            jump_address = partition_mng.bootAddress();
-            break;
+            if (partition_mng.getBootStatusFromMBR() == MasterBootRecord::APP_STATUS_OK)
+            {
+                jump_address = partition_mng.bootAddress();
+                break;
+            }
+            else
+            {
+                MAIN_TAG_CONSOLE("BOOT_RUN_MODE status Error");
+            }
         }
         else
         {
@@ -165,6 +191,7 @@ static uint32_t startup_application(void)
         if (partition_mng.restoreBoot())
         {
             jump_address = partition_mng.bootAddress();
+            MAIN_TAG_CONSOLE("BOOT_ROLLBACK_MODE OK");
             break;
         }
         else

@@ -58,6 +58,10 @@ public:
     bool cloneMain2ImageDownload(void);
     MasterBootRecord::startup_mode_t getStartUpModeFromMBR(void);
     bool setStartUpModeToMBR(MasterBootRecord::startup_mode_t mode);
+    MasterBootRecord::app_status_t getMainStatusFromMBR(void);
+    MasterBootRecord::app_status_t getBootStatusFromMBR(void);
+    bool setMainStatusToMBR(MasterBootRecord::app_status_t status);
+    bool setBootStatusToMBR(MasterBootRecord::app_status_t status);
     uint32_t mainAddress(void);
     uint32_t bootAddress(void);
 

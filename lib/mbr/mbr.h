@@ -262,6 +262,8 @@ public:
     mbr_status_t commit(void);
     void end(void);
     void printMbrInfo(void);
+    void printAppInfo(app_info_t *pParams);
+    void printFwHeaderInfo(firmwareHeader_t *fwHeader);
 
     app_info_t getMainParams(void);
     app_info_t getBootParams(void);
@@ -271,6 +273,8 @@ public:
     AES128_crypto_t getAes128Params(void);
     dfu_mode_t getDfuMode(void);
     startup_mode_t getStartUpMode(void);
+    app_status_t getMainStatus(void);
+    app_status_t getBootStatus(void);
     uint16_t getMainDfuNum(void);
     uint16_t getBootDfuNum(void);
     std::string getHardwareVersion(void);
@@ -283,6 +287,8 @@ public:
     void setAes128Params(AES128_crypto_t *pParams);
     void setDfuMode(dfu_mode_t mode);
     void setStartUpMode(startup_mode_t mode);
+    void setMainStatus(app_status_t status);
+    void setBootStatus(app_status_t status);
     void setHardwareVersion(std::string const &hwName);
     void setMainDfuNum(uint16_t num);
     void setBootDfuNum(uint16_t num);
@@ -337,6 +343,7 @@ private:
     FlashIAPBlockDevice _flash_iap_block_device;
     flashIFCallback _fp_callback;
     mbr_info_t _mbr_info;
+    bool _init_isOK;
 
     std::string readableSize(float bytes);
 };
