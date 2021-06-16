@@ -21,7 +21,7 @@
 
 /* PinMap SPI0 */
 const PinMapSPI PinMap_SPI[1] = {
-    {FSPI_MOSI_PIN, FSPI_MISO_PIN, FSPI_CLK_PIN, 0}};
+    {FSPI_MOSI_PIN, FSPI_MISO_PIN, FSPI_CLK_PIN, 3}};
 /* Init SPI Block Device */
 SPIFBlockDevice spiFlashDevice(FSPI_MOSI_PIN, FSPI_MISO_PIN, FSPI_CLK_PIN, FSPI_CS_PIN);
 partition_manager partition_mng(&spiFlashDevice);

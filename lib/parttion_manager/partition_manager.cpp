@@ -20,6 +20,9 @@ static void printData(const void* data, size_t length)
 SPIFBlockDevice* partition_manager::_spiDevice = nullptr;
 
 partition_manager::partition_manager(SPIFBlockDevice* spiDevice) :
+#if defined(PM_VERIFY_DATA_BY_MBED_CRC32) && (PM_VERIFY_DATA_BY_MBED_CRC32 == 1)
+_mbedCrc(UINT32_MAX, UINT32_MAX, false, true),
+#endif
 _mbr(),
 aes128()
 {
@@ -1061,9 +1064,13 @@ uint32_t partition_manager::CRC32(app_info_t* app)
 
     PARTITION_MNG_TAG_PRINTF("[CRC32]>> start");
     PARTITION_MNG_TAG_PRINTF("[CRC32]\t addr=0x%08X, size=%u", app->startup_addr, app->fw_header.size);
+#if defined(PM_VERIFY_DATA_BY_MBED_CRC32) && (PM_VERIFY_DATA_BY_MBED_CRC32 == 1)
+    _mbedCrc.compute_partial_start(&crc);
+#else
     CRC32_Start(0);
     /* Calculator CRC 12-byte of fw_header*/
     CRC32_Accumulate((uint8_t *) &(app->fw_header.size), 12U);
+#endif
     if (app->fw_header.type.mem == MasterBootRecord::MEMORY_INTERNAL)
     {
         if (app->fw_header.size > app->max_size)
@@ -1072,7 +1079,11 @@ uint32_t partition_manager::CRC32(app_info_t* app)
             return 0;
         }
         PARTITION_MNG_TAG_PRINTF("[CRC32]\t internal memory");
+#if defined(PM_VERIFY_DATA_BY_MBED_CRC32) && (PM_VERIFY_DATA_BY_MBED_CRC32 == 1)
+        _mbedCrc.compute_partial((void *) app->startup_addr, app->fw_header.size, &crc);
+#else
         CRC32_Accumulate((uint8_t *) app->startup_addr, app->fw_header.size);
+#endif
     }
     else
     {
@@ -1115,7 +1126,11 @@ uint32_t partition_manager::CRC32(app_info_t* app)
             }
 
             spiFlash->read(ptr_data, addr, read_size);
+#if defined(PM_VERIFY_DATA_BY_MBED_CRC32) && (PM_VERIFY_DATA_BY_MBED_CRC32 == 1)
+            _mbedCrc.compute_partial((void *) ptr_data, read_size, &crc);
+#else
             CRC32_Accumulate((uint8_t *) ptr_data, read_size);
+#endif
             addr += read_size;
             remain_size -= read_size;
             PARTITION_MNG_TAG_PRINTF("[CRC32]\t %u%%", addr * 100 / app->fw_header.size);
@@ -1124,7 +1139,11 @@ uint32_t partition_manager::CRC32(app_info_t* app)
         delete[] ptr_data;
         delete spiFlash;
     }
+#if defined(PM_VERIFY_DATA_BY_MBED_CRC32) && (PM_VERIFY_DATA_BY_MBED_CRC32 == 1)
+    _mbedCrc.compute_partial_stop(&crc);
+#else
     crc = CRC32_Get();
+#endif
     
     PARTITION_MNG_TAG_PRINTF("[CRC32]\t 0x%08X", crc);
     PARTITION_MNG_TAG_PRINTF("[CRC32]<< finish");

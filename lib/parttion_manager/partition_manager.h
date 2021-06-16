@@ -33,6 +33,7 @@
 
 /* Private defines -----------------------------------------------------------*/
 #define PM_VERIFY_DATA_BY_CRC32 1
+#define PM_VERIFY_DATA_BY_MBED_CRC32 0
 
 class partition_manager
 {
@@ -68,6 +69,9 @@ public:
 private:
     static SPIFBlockDevice* _spiDevice;
     MasterBootRecord _mbr;
+#if defined(PM_VERIFY_DATA_BY_MBED_CRC32) && (PM_VERIFY_DATA_BY_MBED_CRC32 == 1)
+    MbedCRC<POLY_32BIT_ANSI, 32, CrcMode::BITWISE> _mbedCrc;
+#endif
     AES aes128;
     bool _init_isOK;
     std::string readableSize(float bytes);
